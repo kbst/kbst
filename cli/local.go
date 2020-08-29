@@ -16,11 +16,10 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
-func Repository(argv []string) (err error) {
+func Local(argv []string) (err error) {
 	usage := `
 Usage:
-  kbst repository init [--path=path]
-  kbst repository watch [--path=path]
+  kbst local dev [--path=path]
 
 Options:
   -p, --path=path  Path to initialize the repository in [default: .].
@@ -30,11 +29,7 @@ Options:
 	args, _ := docopt.ParseDoc(usage)
 	fmt.Println(args)
 
-	if args["init"] == true {
-		fmt.Println("init not implemented yet")
-	}
-
-	if args["watch"] == true {
+	if args["dev"] == true {
 		repoWatch(args["--path"].(string))
 	}
 
@@ -129,7 +124,7 @@ func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *Ap
 	// postpone executing slightly
 	time.Sleep(200 * time.Millisecond)
 
-	// check if while we were sleeping another apply was queued
+	// check if while we were sleeping another fs event queued an apply
 	if ts != lastEvent.Get() {
 		// cancel apply
 		return
@@ -162,8 +157,6 @@ func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *Ap
 	buildCmd.Dir = path
 	buildCmd.Stderr = os.Stderr
 	buildCmd.Stdout = os.Stdout
-
-	//log.Println(buildCmd)
 
 	err = buildCmd.Run()
 	if err != nil {
@@ -217,15 +210,9 @@ func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *Ap
 	runCmd.Stderr = os.Stderr
 	runCmd.Stdout = os.Stdout
 
-	//log.Println(runCmd)
-
 	err = runCmd.Run()
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	// Replace cluster modules with cluster-local implementations
-	// Write modified config to temporary directory
-	// Run kind container Terraform apply based on modified config
 	return
 }
