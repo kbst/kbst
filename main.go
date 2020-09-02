@@ -7,6 +7,7 @@ import (
 
 	"github.com/docopt/docopt-go"
 	"github.com/kbst/kbst/cli"
+	"github.com/kbst/kbst/util"
 )
 
 func main() {
@@ -39,7 +40,16 @@ Options:
 	resource := args["<resource>"].(string)
 	arguments := args["<arguments>"].([]string)
 
-	err := switchKind(resource, arguments)
+	// If err, we can't show update notification
+	cli, err := util.GetCli()
+	if err == nil {
+		// TODO: replace with version check and update notification
+		for v := range cli.Versions {
+			log.Println(v)
+		}
+	}
+
+	err = switchKind(resource, arguments)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -50,12 +60,14 @@ func switchKind(res string, args []string) (err error) {
 	log.Printf("argv: %s", argv)
 
 	switch res {
-	case "repository":
-		return cli.Repository(argv)
 	case "cluster":
 		return cli.Cluster(argv)
+	case "local":
+		return cli.Local(argv)
 	case "manifest":
 		return cli.Manifest(argv)
+	case "repository":
+		return cli.Repository(argv)
 	case "shell":
 		return cli.Shell(argv)
 	case "help":
