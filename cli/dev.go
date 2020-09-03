@@ -11,65 +11,44 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docopt/docopt-go"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"gopkg.in/fsnotify.v1"
 )
 
-func Local(argv []string) (err error) {
-	usage := `
-Usage:
-  kbst local dev [--path=path]
-
-Options:
-  -p, --path=path  Path to initialize the repository in [default: .].
-  -h, --help	   Show this help.
-`
-
-	args, _ := docopt.ParseDoc(usage)
-	fmt.Println(args)
-
-	if args["dev"] == true {
-		repoWatch(args["--path"].(string))
-	}
-
-	return
-}
-
-type ApplyLock struct {
+type applyLock struct {
 	mux sync.Mutex
 }
 
-type LastEvent struct {
+type lastEvent struct {
 	ts  time.Time
 	mux sync.Mutex
 }
 
-func (l *LastEvent) Set(ts time.Time) {
+func (l *lastEvent) Set(ts time.Time) {
 	l.mux.Lock()
 	l.ts = ts
 	l.mux.Unlock()
 }
 
-func (l *LastEvent) Get() time.Time {
+func (l *lastEvent) Get() time.Time {
 	l.mux.Lock()
 	defer l.mux.Unlock()
 	return l.ts
 }
 
-func repoWatch(path string) (err error) {
-	applyLock := ApplyLock{}
-	lastEvent := LastEvent{}
+func DevUp(path string) (err error) {
+	applyLock := applyLock{}
+	lastEvent := lastEvent{}
 
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	go handleChange(path, ts, &lastEvent, &applyLock)
+	handleChange(path, false, ts, &lastEvent, &applyLock)
 
 	// then start watching
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("test %s", err)
 	}
 	defer watcher.Close()
 
@@ -90,7 +69,7 @@ func repoWatch(path string) (err error) {
 
 				ts := time.Now()
 				lastEvent.Set(ts)
-				go handleChange(path, ts, &lastEvent, &applyLock)
+				go handleChange(path, false, ts, &lastEvent, &applyLock)
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
@@ -120,7 +99,19 @@ func repoWatch(path string) (err error) {
 	return
 }
 
-func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *ApplyLock) {
+func DevDown(path string) (err error) {
+	applyLock := applyLock{}
+	lastEvent := lastEvent{}
+
+	// first apply to bring up dev env
+	ts := time.Now()
+	lastEvent.Set(ts)
+	handleChange(path, true, ts, &lastEvent, &applyLock)
+
+	return
+}
+
+func handleChange(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock) {
 	// postpone executing slightly
 	time.Sleep(200 * time.Millisecond)
 
@@ -147,7 +138,7 @@ func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *Ap
 	buildCmd := exec.Command(
 		"docker",
 		"build",
-		"--progress", "plain",
+		//"--progress", "plain",
 		"--file", "Dockerfile.loc",
 		"--tag", imageTag,
 		"--build-arg", fmt.Sprintf("UID=%s", u.Uid),
@@ -181,6 +172,10 @@ func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *Ap
 	tfStateVolume := fmt.Sprintf("kbst-loc-terraform-state:%s", tfStatePath)
 	dockerSocketVolume := "/var/run/docker.sock:/var/run/docker.sock"
 
+	tfCommand := "apply"
+	if destroy {
+		tfCommand = "destroy"
+	}
 	applySh := fmt.Sprintf(`
 	#!/bin/sh
 	set -e
@@ -196,8 +191,8 @@ func handleChange(path string, ts time.Time, lastEvent *LastEvent, applyLock *Ap
 	terraform workspace new loc || true
 	terraform workspace select loc
 	
-	terraform destroy --auto-approve
-	`, strings.Join(sedArgs, " "))
+	terraform %s --auto-approve
+	`, strings.Join(sedArgs, " "), tfCommand)
 	runCmd := exec.Command(
 		"docker",
 		"run",

@@ -5,35 +5,10 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/docopt/docopt-go"
 	"github.com/kbst/kbst/util"
 )
 
-func Repository(argv []string) (err error) {
-	usage := `
-Usage:
-  kbst repository init <starter> [--release=release] [--path=path]
-
-Options:
-  -r. --release=release  Release version to use [default: latest].
-  -p, --path=path  		 Path to initialize the repository in [default: .].
-  -h, --help	   		 Show this help.
-`
-
-	args, _ := docopt.ParseDoc(usage)
-	fmt.Println(args)
-
-	if args["init"] == true {
-		starter := args["<starter>"].(string)
-		release := args["--release"].(string)
-		path := args["--path"].(string)
-		return repoInit(starter, release, path)
-	}
-
-	return
-}
-
-func repoInit(starter string, release string, path string) (err error) {
+func RepoInit(starter string, release string, path string) (err error) {
 	framework, err := util.GetFramework()
 	if err != nil {
 		return err

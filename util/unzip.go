@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +15,6 @@ import (
 func Unzip(src []byte, path string) (filenames []string, err error) {
 	br := bytes.NewReader(src)
 	ra := io.ReaderAt(br)
-	log.Println(br.Size())
 	r, err := zip.NewReader(ra, br.Size())
 	if err != nil {
 		return filenames, err
