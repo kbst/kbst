@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
@@ -29,13 +30,21 @@ func RepoInit(starter string, release string, path string) (err error) {
 		}
 
 		if initVersion.Name != release {
-			return fmt.Errorf("'%s' is not a valid version", release)
+			return fmt.Errorf(
+				"'%s' is not a valid version, try the latest version '%s'",
+				release,
+				initVersion.Name,
+			)
 		}
 	}
 
 	url, ok := initVersion.Archives[starter]
 	if !ok {
-		return fmt.Errorf("'%s' is not a valid starter", starter)
+		return fmt.Errorf(
+			"'%s' is not a valid starter name, choose one of %v",
+			starter,
+			reflect.ValueOf(initVersion.Archives).MapKeys(),
+		)
 	}
 
 	// download archive
