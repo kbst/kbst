@@ -47,5 +47,5 @@ to quickly create a Cobra application.`,
 func init() {
 	repositoryCmd.AddCommand(repositoryInitCmd)
 
-	repositoryInitCmd.Flags().StringVarP(&release, "release", "r", "latest", "Framewowrk release to use")
+	repositoryInitCmd.Flags().StringVarP(&release, "release", "r", "latest", "desired release version")
 }
