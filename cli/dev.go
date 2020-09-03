@@ -36,14 +36,14 @@ func (l *lastEvent) Get() time.Time {
 	return l.ts
 }
 
-func DevUp(path string) (err error) {
+func DevApply(path string) (err error) {
 	applyLock := applyLock{}
 	lastEvent := lastEvent{}
 
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	handleChange(path, false, ts, &lastEvent, &applyLock)
+	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
 
 	// then start watching
 	watcher, err := fsnotify.NewWatcher()
@@ -69,7 +69,7 @@ func DevUp(path string) (err error) {
 
 				ts := time.Now()
 				lastEvent.Set(ts)
-				go handleChange(path, false, ts, &lastEvent, &applyLock)
+				go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
@@ -99,19 +99,19 @@ func DevUp(path string) (err error) {
 	return
 }
 
-func DevDown(path string) (err error) {
+func DevDestroy(path string) (err error) {
 	applyLock := applyLock{}
 	lastEvent := lastEvent{}
 
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	handleChange(path, true, ts, &lastEvent, &applyLock)
+	runLocalTerraformContainer(path, true, ts, &lastEvent, &applyLock)
 
 	return
 }
 
-func handleChange(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock) {
+func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock) {
 	// postpone executing slightly
 	time.Sleep(200 * time.Millisecond)
 
