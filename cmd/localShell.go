@@ -16,32 +16,19 @@ limitations under the License.
 package cmd
 
 import (
-	"log"
-
 	"github.com/kbst/kbst/cli"
 	"github.com/spf13/cobra"
 )
 
-var release string
-var devRelease string
-
-// repositoryInitCmd represents the repository init command
-var repositoryInitCmd = &cobra.Command{
-	Use:   "init <starter>",
-	Short: "Scaffold a new repository",
-	Args:  cobra.ExactArgs(1),
+// devCmd represents the dev command
+var localShellCmd = &cobra.Command{
+	Use:   "shell",
+	Short: "Open a shell inside the local environment container",
 	Run: func(cmd *cobra.Command, args []string) {
-		starter := args[0]
-		err := cli.RepoInit(starter, release, devRelease, path)
-		if err != nil {
-			log.Fatal(err)
-		}
+		cli.DevDestroy(path)
 	},
 }
 
 func init() {
-	repositoryCmd.AddCommand(repositoryInitCmd)
-
-	repositoryInitCmd.Flags().StringVarP(&release, "release", "r", "latest", "desired release version")
-	repositoryInitCmd.Flags().StringVar(&devRelease, "dev-release", "", "ref to a dev release")
+	devCmd.AddCommand(localShellCmd)
 }

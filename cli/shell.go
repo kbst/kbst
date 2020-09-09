@@ -2,30 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"log"
-
-	"github.com/docopt/docopt-go"
 )
-
-func Shell(argv []string) (err error) {
-	usage := `
-Usage:
-  kbst shell [--path=path]
-
-Options:
-  -p, --path=path  Path to initialize the repository in [default: .].
-  -h, --help	   Show this help.
-`
-
-	args, _ := docopt.ParseDoc(usage)
-	log.Println(args)
-
-	if args["shell"] == true {
-		getCmd()
-	}
-
-	return
-}
 
 func getCmd() {
 	fmt.Printf(

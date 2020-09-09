@@ -3,8 +3,6 @@ package cli
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -12,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/kbst/kbst/util"
 	"gopkg.in/fsnotify.v1"
 )
 
@@ -56,16 +55,10 @@ func DevApply(path string) (err error) {
 	go func() {
 		for {
 			select {
-			case event, ok := <-watcher.Events:
+			case _, ok := <-watcher.Events:
 				if !ok {
 					return
 				}
-
-				if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					return
-				}
-
-				log.Println(event)
 
 				ts := time.Now()
 				lastEvent.Set(ts)
@@ -132,24 +125,17 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 		log.Fatalln(err)
 	}
 
-	imageTag := fmt.Sprintf("kbst:%d", ts.Unix())
+	imageTag := util.DockerImageTag(path, "loc")
 
 	// build the docker image for this apply run
-	buildCmd := exec.Command(
-		"docker",
-		"build",
-		//"--progress", "plain",
+	buildArgs := []string{
 		"--file", "Dockerfile.loc",
 		"--tag", imageTag,
 		"--build-arg", fmt.Sprintf("UID=%s", u.Uid),
 		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
-		".")
-	buildCmd.Env = []string{"DOCKER_BUILDKIT=1"}
-	buildCmd.Dir = path
-	buildCmd.Stderr = os.Stderr
-	buildCmd.Stdout = os.Stdout
+		"."}
 
-	err = buildCmd.Run()
+	err = util.DockerBuild(path, buildArgs)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -168,8 +154,9 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 	}
 
 	// prepare volumes
+	tfStatePathHash := util.PathHash(path)
 	tfStatePath := "/infra/terraform.tfstate.d"
-	tfStateVolume := fmt.Sprintf("kbst-loc-terraform-state:%s", tfStatePath)
+	tfStateVolume := fmt.Sprintf("kbst-loc-terraform-state-%s:%s", tfStatePathHash, tfStatePath)
 	dockerSocketVolume := "/var/run/docker.sock:/var/run/docker.sock"
 
 	tfCommand := "apply"
@@ -193,21 +180,21 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 	
 	terraform %s --auto-approve
 	`, strings.Join(sedArgs, " "), tfCommand)
-	runCmd := exec.Command(
-		"docker",
-		"run",
+
+	runArgs := []string{
 		"--rm",
 		"--privileged",
 		"--volume", tfStateVolume,
 		"--volume", dockerSocketVolume,
+		"--net", "host",
 		imageTag,
-		"sh", "-c", applySh)
-	runCmd.Stderr = os.Stderr
-	runCmd.Stdout = os.Stdout
+		"sh", "-c", applySh}
 
-	err = runCmd.Run()
+	err = util.DockerRun(runArgs)
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
+
+	log.Println("#### Watching for changes")
 	return
 }

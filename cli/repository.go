@@ -12,42 +12,13 @@ import (
 	"github.com/kbst/kbst/util"
 )
 
-func RepoInit(starter string, release string, path string) (err error) {
-	framework, err := util.GetFramework()
+func RepoInit(starter string, release string, devRelease string, path string) (err error) {
+	// download archive
+	url, err := getDownloadUrl(starter, release, devRelease)
 	if err != nil {
 		return err
 	}
 
-	// determine version
-	initVersion := framework.Versions[0]
-	if release != "latest" {
-		for i := range framework.Versions {
-			v := framework.Versions[i]
-			if v.Name == release {
-				initVersion = v
-				break
-			}
-		}
-
-		if initVersion.Name != release {
-			return fmt.Errorf(
-				"'%s' is not a valid version, try the latest version '%s'",
-				release,
-				initVersion.Name,
-			)
-		}
-	}
-
-	url, ok := initVersion.Archives[starter]
-	if !ok {
-		return fmt.Errorf(
-			"'%s' is not a valid starter name, choose one of %v",
-			starter,
-			reflect.ValueOf(initVersion.Archives).MapKeys(),
-		)
-	}
-
-	// download archive
 	resp, err := util.CachedDownload(url)
 	if err != nil {
 		return err
@@ -100,4 +71,50 @@ func RepoInit(starter string, release string, path string) (err error) {
 	}
 
 	return
+}
+
+func getDownloadUrl(starter string, release string, devRelease string) (url string, err error) {
+	if devRelease != "" {
+		return fmt.Sprintf(
+			"https://storage.googleapis.com/dev.quickstart.kubestack.com/kubestack-starter-%s-%s.zip",
+			starter,
+			devRelease,
+		), nil
+	}
+
+	// determine version
+	framework, err := util.GetFramework()
+	if err != nil {
+		return url, err
+	}
+
+	initVersion := framework.Versions[0]
+	if release != "latest" {
+		for i := range framework.Versions {
+			v := framework.Versions[i]
+			if v.Name == release {
+				initVersion = v
+				break
+			}
+		}
+
+		if initVersion.Name != release {
+			return url, fmt.Errorf(
+				"'%s' is not a valid version, try the latest version '%s'",
+				release,
+				initVersion.Name,
+			)
+		}
+	}
+
+	url, ok := initVersion.Archives[starter]
+	if !ok {
+		return url, fmt.Errorf(
+			"'%s' is not a valid starter name, choose one of %v",
+			starter,
+			reflect.ValueOf(initVersion.Archives).MapKeys(),
+		)
+	}
+
+	return url, nil
 }
