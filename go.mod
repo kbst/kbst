@@ -17,4 +17,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7
+	sigs.k8s.io/kustomize/api v0.6.0
+	sigs.k8s.io/kustomize/kustomize/v3 v3.8.2
+	sigs.k8s.io/yaml v1.2.0
 )

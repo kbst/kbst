@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -14,6 +15,29 @@ type Version struct {
 type Entry struct {
 	Name     string    `json:"name"`
 	Versions []Version `json:"versions"`
+}
+
+func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
+	v = e.Versions[0]
+	if r != "latest" {
+		for i := range e.Versions {
+			cv := e.Versions[i]
+			if cv.Name == r {
+				v = cv
+				break
+			}
+		}
+
+		if e.Name != r {
+			return v, fmt.Errorf(
+				"'%s' is not a valid version, try the latest version '%s'",
+				r,
+				v.Name,
+			)
+		}
+	}
+
+	return v, nil
 }
 
 type Catalog map[string]Entry
