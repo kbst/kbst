@@ -23,7 +23,7 @@ import (
 )
 
 var release string
-var devRelease string
+var gitRef string
 
 // repositoryInitCmd represents the repository init command
 var repositoryInitCmd = &cobra.Command{
@@ -32,7 +32,7 @@ var repositoryInitCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		starter := args[0]
-		err := cli.RepoInit(starter, release, devRelease, path)
+		err := cli.RepoInit(starter, release, gitRef, path)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -43,5 +43,6 @@ func init() {
 	repositoryCmd.AddCommand(repositoryInitCmd)
 
 	repositoryInitCmd.Flags().StringVarP(&release, "release", "r", "latest", "desired release version")
-	repositoryInitCmd.Flags().StringVar(&devRelease, "dev-release", "", "ref to a dev release")
+	repositoryInitCmd.Flags().StringVar(&gitRef, "gitref", "", "git ref to download a dev artifact")
+	repositoryInitCmd.Flags().MarkHidden("gitref")
 }

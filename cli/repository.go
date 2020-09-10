@@ -12,9 +12,9 @@ import (
 	"github.com/kbst/kbst/util"
 )
 
-func RepoInit(starter string, release string, devRelease string, path string) (err error) {
+func RepoInit(starter string, release string, gitRef string, path string) (err error) {
 	// download archive
-	url, err := getDownloadUrl(starter, release, devRelease)
+	url, err := getDownloadUrl(starter, release, gitRef)
 	if err != nil {
 		return err
 	}
@@ -73,12 +73,12 @@ func RepoInit(starter string, release string, devRelease string, path string) (e
 	return
 }
 
-func getDownloadUrl(starter string, release string, devRelease string) (url string, err error) {
-	if devRelease != "" {
+func getDownloadUrl(starter string, release string, gitRef string) (url string, err error) {
+	if gitRef != "" {
 		return fmt.Sprintf(
 			"https://storage.googleapis.com/dev.quickstart.kubestack.com/kubestack-starter-%s-%s.zip",
 			starter,
-			devRelease,
+			gitRef,
 		), nil
 	}
 
