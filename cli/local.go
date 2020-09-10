@@ -119,13 +119,18 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 	applyLock.mux.Lock()
 	defer applyLock.mux.Unlock()
 
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	// get current user id to set chown during docker build
 	u, err := user.Current()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	imageTag := util.DockerImageTag(path, "loc")
+	imageTag := util.DockerImageTag(absPath, "loc")
 
 	// build the docker image for this apply run
 	buildArgs := []string{
@@ -135,7 +140,7 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
 		"."}
 
-	err = util.DockerBuild(path, buildArgs)
+	err = util.DockerBuild(absPath, buildArgs)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -154,7 +159,7 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 	}
 
 	// prepare volumes
-	tfStatePathHash := util.PathHash(path)
+	tfStatePathHash := util.PathHash(absPath)
 	tfStatePath := "/infra/terraform.tfstate.d"
 	tfStateVolume := fmt.Sprintf("kbst-loc-terraform-state-%s:%s", tfStatePathHash, tfStatePath)
 	dockerSocketVolume := "/var/run/docker.sock:/var/run/docker.sock"
