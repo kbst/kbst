@@ -16,8 +16,14 @@ limitations under the License.
 package cmd
 
 import (
+	"log"
+
+	"github.com/kbst/kbst/cli"
 	"github.com/spf13/cobra"
 )
+
+var release string
+var gitRef string
 
 // repositoryCmd represents the repository command
 var repositoryCmd = &cobra.Command{
@@ -26,6 +32,26 @@ var repositoryCmd = &cobra.Command{
 	Short:   "Create and change Kubestack repositories",
 }
 
+// repositoryInitCmd represents the repository init command
+var repositoryInitCmd = &cobra.Command{
+	Use:   "init <starter>",
+	Short: "Scaffold a new repository",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		starter := args[0]
+		err := cli.RepoInit(starter, release, gitRef, path)
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(repositoryCmd)
+
+	repositoryCmd.AddCommand(repositoryInitCmd)
+
+	repositoryInitCmd.Flags().StringVarP(&release, "release", "r", "latest", "desired release version")
+	repositoryInitCmd.Flags().StringVar(&gitRef, "gitref", "", "git ref to download a dev artifact")
+	repositoryInitCmd.Flags().MarkHidden("gitref")
 }
