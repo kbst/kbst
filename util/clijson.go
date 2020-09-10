@@ -40,17 +40,13 @@ func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
 	return v, nil
 }
 
-type Catalog map[string]Entry
-type Framework Entry
-type Cli Entry
-
 type CliJSON struct {
-	Catalog   Catalog   `json:"catalog"`
-	Framework Framework `json:"framework"`
-	Cli       Cli       `json:"cli"`
+	Catalog   map[string]Entry `json:"catalog"`
+	Framework Entry            `json:"framework"`
+	Cli       Entry            `json:"cli"`
 }
 
-func GetCatalog() (catalog Catalog, err error) {
+func GetCatalog() (catalog map[string]Entry, err error) {
 	cliJson, err := getCliJson()
 	if err != nil {
 		return catalog, err
@@ -58,7 +54,7 @@ func GetCatalog() (catalog Catalog, err error) {
 	return cliJson.Catalog, nil
 }
 
-func GetFramework() (framework Framework, err error) {
+func GetFramework() (framework Entry, err error) {
 	cliJson, err := getCliJson()
 	if err != nil {
 		return framework, err
@@ -66,7 +62,7 @@ func GetFramework() (framework Framework, err error) {
 	return cliJson.Framework, nil
 }
 
-func GetCli() (cli Cli, err error) {
+func GetCli() (cli Entry, err error) {
 	cliJson, err := getCliJson()
 	if err != nil {
 		return cli, err
