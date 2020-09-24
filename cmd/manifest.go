@@ -34,7 +34,7 @@ var manifestCmd = &cobra.Command{
 
 var manifestInstallCmd = &cobra.Command{
 	Use:   "install <entry> <variant>",
-	Short: "Install manifests from the catalog",
+	Short: "Install a catalog entry to your manifests",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		entry := args[0]
@@ -46,12 +46,29 @@ var manifestInstallCmd = &cobra.Command{
 	},
 }
 
+var manifestRemoveCmd = &cobra.Command{
+	Use:   "remove <entry>",
+	Short: "Remove a catalog entry from your manifests",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		entry := args[0]
+		err := cli.ManifestRemove(entry, manifestOverlay, path)
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(manifestCmd)
-	manifestCmd.AddCommand(manifestInstallCmd)
 
+	// InstallCmd
+	manifestCmd.AddCommand(manifestInstallCmd)
 	manifestInstallCmd.Flags().StringVarP(&manifestRelease, "release", "r", "latest", "desired release version")
 	manifestInstallCmd.Flags().StringVarP(&manifestOverlay, "overlay", "o", "apps", "overlay to add resources to")
 	manifestInstallCmd.Flags().StringVar(&manifestGitRef, "gitref", "", "git ref to download a dev artifact")
 	manifestInstallCmd.Flags().MarkHidden("gitref")
+
+	// RemoveCmd
+	manifestCmd.AddCommand(manifestRemoveCmd)
 }

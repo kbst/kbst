@@ -3,10 +3,10 @@ package cli
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/kbst/kbst/util"
 )
@@ -17,20 +17,14 @@ func ManifestInstall(entry string, variant string, overlay string, release strin
 		return err
 	}
 
+	// download entry archive
 	resp, err := util.CachedDownload(url)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	// extract archive
 	archive, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	basesPath := filepath.Join(path, "manifests", "bases")
-	absBasesPath, err := filepath.Abs(basesPath)
 	if err != nil {
 		return err
 	}
@@ -39,71 +33,30 @@ func ManifestInstall(entry string, variant string, overlay string, release strin
 	tempEntry, err := ioutil.TempDir(os.TempDir(), "kbst-manifest-tmp-")
 	defer os.RemoveAll(tempEntry)
 
-	absTempEntry, err := filepath.Abs(tempEntry)
+	_, err = util.Unzip(archive, tempEntry)
 	if err != nil {
 		return err
 	}
 
-	_, err = util.Unzip(archive, absTempEntry)
+	// check variant is in entry
+	_, err = getEntryVariants(tempEntry, entry, variant)
 	if err != nil {
 		return err
-	}
-
-	// determine available variants
-	tempEntryPath := filepath.Join(absTempEntry, entry)
-	entryVariants := []string{}
-	entryVariantFound := false
-	entryPathEntries, err := ioutil.ReadDir(tempEntryPath)
-	if err != nil {
-		return err
-	}
-	for _, e := range entryPathEntries {
-		if e.IsDir() {
-			entryVariants = append(entryVariants, e.Name())
-
-			if e.Name() == variant {
-				entryVariantFound = true
-			}
-		}
-	}
-
-	if !entryVariantFound {
-		return fmt.Errorf(
-			"'%s' is not a valid variant for '%s', choose one of %v",
-			variant,
-			entry,
-			entryVariants,
-		)
 	}
 
 	// now that we know entry and variant are ok
 	// we extract into basesPath
-	_, err = util.Unzip(archive, absBasesPath)
+	basesPath := filepath.Join(path, "manifests", "bases")
+
+	_, err = util.Unzip(archive, basesPath)
 	if err != nil {
 		return err
 	}
 
 	// add kustomization resources
-	overlaysPath := filepath.Join(path, "manifests", "overlays")
+	overlayPath := filepath.Join(path, "manifests", "overlays", overlay)
 
-	if overlay == "" {
-		overlay = "apps"
-	}
-	overlayPath := filepath.Join(overlaysPath, overlay)
-	absOverlayPath, err := filepath.Abs(overlayPath)
-	if err != nil {
-		return err
-	}
-
-	absVariantPath := filepath.Join(absBasesPath, entry, variant)
-	relOverlayPath, err := filepath.Rel(absOverlayPath, absVariantPath)
-	if err != nil {
-		return err
-	}
-
-	resources := []string{relOverlayPath}
-
-	fSys := util.MakeRelFsOnDisk(absOverlayPath)
+	fSys := util.MakeRelFsOnDisk(overlayPath)
 	mf, err := util.NewKustomizationFile(fSys)
 	if err != nil {
 		return err
@@ -114,17 +67,104 @@ func ManifestInstall(entry string, variant string, overlay string, release strin
 		return err
 	}
 
-	for _, resource := range resources {
-		if util.StringInSlice(resource, m.Resources) {
-			log.Printf("resource %s already in kustomization file", resource)
-			continue
-		}
-		m.Resources = append(m.Resources, resource)
+	variantPath := filepath.Join(basesPath, entry, variant)
+	resource, err := filepath.Rel(overlayPath, variantPath)
+	if err != nil {
+		return err
 	}
 
-	mf.Write(m)
+	if util.StringInSlice(resource, m.Resources) {
+		// what we're trying to add is already in the list
+		return nil
+	}
+	m.Resources = append(m.Resources, resource)
+
+	err = mf.Write(m)
+	if err != nil {
+		return err
+	}
 
 	return nil
+}
+
+func ManifestRemove(entry string, overlay string, path string) (err error) {
+	basesPath := filepath.Join(path, "manifests", "bases")
+	entryPath := filepath.Join(basesPath, entry)
+
+	// remove kustomization resources
+	overlaysPath := filepath.Join(path, "manifests", "overlays")
+	overlayPath := filepath.Join(overlaysPath, overlay)
+
+	fSys := util.MakeRelFsOnDisk(overlayPath)
+	mf, err := util.NewKustomizationFile(fSys)
+	if err != nil {
+		return err
+	}
+
+	m, err := mf.Read()
+	if err != nil {
+		return err
+	}
+
+	relEntryPath, err := filepath.Rel(overlayPath, entryPath)
+	if err != nil {
+		return err
+	}
+
+	// just remove all references to the base we're deleting
+	newResources := []string{}
+	for _, resource := range m.Resources {
+		if strings.HasPrefix(resource, relEntryPath) {
+			continue
+		}
+
+		newResources = append(newResources, resource)
+	}
+
+	m.Resources = newResources
+
+	err = mf.Write(m)
+	if err != nil {
+		return err
+	}
+
+	// delete the base
+	err = os.RemoveAll(entryPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getEntryVariants(path string, entry string, variant string) (variants []string, err error) {
+	variants = []string{}
+	found := false
+	entryPath := filepath.Join(path, entry)
+	entryPathEntries, err := ioutil.ReadDir(entryPath)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entryPathEntries {
+		if e.IsDir() {
+			variants = append(variants, e.Name())
+
+			if e.Name() == variant {
+				found = true
+			}
+		}
+	}
+
+	if !found {
+		return nil, fmt.Errorf(
+			"'%s' is not a valid variant for '%s', choose one of %v",
+			variant,
+			entry,
+			variants,
+		)
+	}
+
+	return variants, nil
 }
 
 func getManifestDownloadUrl(entry string, release string, gitRef string) (url string, err error) {
