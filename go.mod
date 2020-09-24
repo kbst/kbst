@@ -13,11 +13,10 @@ require (
 	github.com/go-git/go-git/v5 v5.1.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20200806211835-c481b8bfa41e
-	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spf13/cobra v1.0.0
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7
 	sigs.k8s.io/kustomize/api v0.6.0
-	sigs.k8s.io/kustomize/kustomize/v3 v3.8.2
 	sigs.k8s.io/yaml v1.2.0
 )
