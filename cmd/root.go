@@ -19,8 +19,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/kbst/kbst/util"
 	"github.com/spf13/cobra"
+	"golang.org/x/mod/semver"
 )
+
+var Version string
 
 var cfgFile string
 var path string
@@ -29,11 +33,30 @@ var path string
 var rootCmd = &cobra.Command{
 	Use:   "kbst",
 	Short: "Kubestack Framework CLI",
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		// check if a newer CLI version is available
+		cli, err := util.GetCli()
+		if err != nil {
+			return
+		}
+
+		if len(cli.Versions) > 1 {
+			current := Version
+			latest := cli.Versions[0].Name
+
+			if semver.Compare(current, latest) == -1 {
+				fmt.Printf("The latest version %s of `kbst` is newer than your current version %s", latest, current)
+				fmt.Printf("To update visit: https://github.com/kbst/kbst/releases/tag/%v\n", latest)
+			}
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	rootCmd.Version = Version
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -15,8 +15,14 @@ limitations under the License.
 */
 package main
 
-import "github.com/kbst/kbst/cmd"
+import (
+	"github.com/kbst/kbst/cmd"
+)
+
+var version string
+var commit string
 
 func main() {
+	cmd.Version = version
 	cmd.Execute()
 }

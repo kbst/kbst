@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -16,17 +17,37 @@ type Entry struct {
 	Versions []Version `json:"versions"`
 }
 
-type Catalog map[string]Entry
-type Framework Entry
-type Cli Entry
+func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
+	v = e.Versions[0]
+	if r != "latest" {
+		var cv Version
+		for i := range e.Versions {
+			cv = e.Versions[i]
+			if cv.Name == r {
+				v = cv
+				break
+			}
+		}
 
-type CliJSON struct {
-	Catalog   Catalog   `json:"catalog"`
-	Framework Framework `json:"framework"`
-	Cli       Cli       `json:"cli"`
+		if cv.Name != r {
+			return v, fmt.Errorf(
+				"'%s' is not a valid version, try the latest version '%s'",
+				r,
+				v.Name,
+			)
+		}
+	}
+
+	return v, nil
 }
 
-func GetCatalog() (catalog Catalog, err error) {
+type CliJSON struct {
+	Catalog   map[string]Entry `json:"catalog"`
+	Framework Entry            `json:"framework"`
+	Cli       Entry            `json:"cli"`
+}
+
+func GetCatalog() (catalog map[string]Entry, err error) {
 	cliJson, err := getCliJson()
 	if err != nil {
 		return catalog, err
@@ -34,7 +55,7 @@ func GetCatalog() (catalog Catalog, err error) {
 	return cliJson.Catalog, nil
 }
 
-func GetFramework() (framework Framework, err error) {
+func GetFramework() (framework Entry, err error) {
 	cliJson, err := getCliJson()
 	if err != nil {
 		return framework, err
@@ -42,7 +63,7 @@ func GetFramework() (framework Framework, err error) {
 	return cliJson.Framework, nil
 }
 
-func GetCli() (cli Cli, err error) {
+func GetCli() (cli Entry, err error) {
 	cliJson, err := getCliJson()
 	if err != nil {
 		return cli, err

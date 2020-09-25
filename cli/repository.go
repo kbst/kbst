@@ -88,31 +88,17 @@ func getDownloadUrl(starter string, release string, gitRef string) (url string, 
 		return url, err
 	}
 
-	initVersion := framework.Versions[0]
-	if release != "latest" {
-		for i := range framework.Versions {
-			v := framework.Versions[i]
-			if v.Name == release {
-				initVersion = v
-				break
-			}
-		}
-
-		if initVersion.Name != release {
-			return url, fmt.Errorf(
-				"'%s' is not a valid version, try the latest version '%s'",
-				release,
-				initVersion.Name,
-			)
-		}
+	version, err := framework.GetReleaseOrLatest(release)
+	if err != nil {
+		return url, err
 	}
 
-	url, ok := initVersion.Archives[starter]
+	url, ok := version.Archives[starter]
 	if !ok {
 		return url, fmt.Errorf(
 			"'%s' is not a valid starter name, choose one of %v",
 			starter,
-			reflect.ValueOf(initVersion.Archives).MapKeys(),
+			reflect.ValueOf(version.Archives).MapKeys(),
 		)
 	}
 

@@ -16,6 +16,7 @@ limitations under the License.
 package cmd
 
 import (
+	"github.com/kbst/kbst/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +27,33 @@ var devCmd = &cobra.Command{
 	Short:   "Start a localhost development environment",
 }
 
+// devCmd represents the dev command
+var devApplyCmd = &cobra.Command{
+	Use:   "apply",
+	Short: "Watch and apply changes to the localhost development environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		cli.DevApply(path)
+	},
+}
+var devDestroyCmd = &cobra.Command{
+	Use:   "destroy",
+	Short: "Destroy the localhost development environment",
+	Run: func(cmd *cobra.Command, args []string) {
+		cli.DevDestroy(path)
+	},
+}
+
+var localShellCmd = &cobra.Command{
+	Use:   "shell",
+	Short: "Open a shell inside the local environment container",
+	Run: func(cmd *cobra.Command, args []string) {
+		cli.DevDestroy(path)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(devCmd)
+	devCmd.AddCommand(devApplyCmd)
+	devCmd.AddCommand(devDestroyCmd)
+	devCmd.AddCommand(localShellCmd)
 }
