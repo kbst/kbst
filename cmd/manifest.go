@@ -25,6 +25,7 @@ import (
 var manifestRelease string
 var manifestOverlay string
 var manifestGitRef string
+var manifestSkipEditKustomization bool
 
 // devCmd represents the dev command
 var manifestCmd = &cobra.Command{
@@ -34,12 +35,12 @@ var manifestCmd = &cobra.Command{
 
 var manifestInstallCmd = &cobra.Command{
 	Use:   "install <entry> <variant>",
-	Short: "Install a catalog entry to your manifests",
+	Short: "Install and vendor a manifest from the catalog",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		entry := args[0]
 		variant := args[1]
-		err := cli.ManifestInstall(entry, variant, manifestOverlay, manifestRelease, manifestGitRef, path)
+		err := cli.ManifestInstall(entry, variant, manifestOverlay, manifestRelease, manifestGitRef, path, manifestSkipEditKustomization)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -48,11 +49,24 @@ var manifestInstallCmd = &cobra.Command{
 
 var manifestRemoveCmd = &cobra.Command{
 	Use:   "remove <entry>",
-	Short: "Remove a catalog entry from your manifests",
+	Short: "Remove a vendored manifest from all environments",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		entry := args[0]
-		err := cli.ManifestRemove(entry, manifestOverlay, path)
+		err := cli.ManifestRemove(entry, path, manifestSkipEditKustomization)
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+var manifestUpdateCmd = &cobra.Command{
+	Use:   "update <entry>",
+	Short: "Update vendored manifests from the catalog",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		entry := args[0]
+		err := cli.ManifestUpdate(entry, manifestOverlay, manifestRelease, manifestGitRef, path)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,9 +80,18 @@ func init() {
 	manifestCmd.AddCommand(manifestInstallCmd)
 	manifestInstallCmd.Flags().StringVarP(&manifestRelease, "release", "r", "latest", "desired release version")
 	manifestInstallCmd.Flags().StringVarP(&manifestOverlay, "overlay", "o", "apps", "overlay to add resources to")
+	manifestInstallCmd.Flags().BoolVar(&manifestSkipEditKustomization, "skip-edit-kustomization", false, "skip editing kustomization resources")
 	manifestInstallCmd.Flags().StringVar(&manifestGitRef, "gitref", "", "git ref to download a dev artifact")
 	manifestInstallCmd.Flags().MarkHidden("gitref")
 
 	// RemoveCmd
 	manifestCmd.AddCommand(manifestRemoveCmd)
+	manifestRemoveCmd.Flags().BoolVar(&manifestSkipEditKustomization, "skip-edit-kustomization", false, "skip editing kustomization resources")
+
+	// UpdateCmd
+	manifestCmd.AddCommand(manifestUpdateCmd)
+	manifestUpdateCmd.Flags().StringVarP(&manifestRelease, "release", "r", "latest", "desired release version")
+	manifestUpdateCmd.Flags().BoolVar(&manifestSkipEditKustomization, "skip-edit-kustomization", false, "skip editing kustomization resources")
+	manifestUpdateCmd.Flags().StringVar(&manifestGitRef, "gitref", "", "git ref to download a dev artifact")
+	manifestUpdateCmd.Flags().MarkHidden("gitref")
 }

@@ -20,15 +20,16 @@ type Entry struct {
 func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
 	v = e.Versions[0]
 	if r != "latest" {
+		var cv Version
 		for i := range e.Versions {
-			cv := e.Versions[i]
+			cv = e.Versions[i]
 			if cv.Name == r {
 				v = cv
 				break
 			}
 		}
 
-		if e.Name != r {
+		if cv.Name != r {
 			return v, fmt.Errorf(
 				"'%s' is not a valid version, try the latest version '%s'",
 				r,
