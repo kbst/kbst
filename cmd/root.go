@@ -45,7 +45,7 @@ var rootCmd = &cobra.Command{
 			latest := cli.Versions[0].Name
 
 			if semver.Compare(current, latest) == -1 {
-				fmt.Printf("The latest version %s of `kbst` is newer than your current version %s", latest, current)
+				fmt.Printf("The latest version %s of `kbst` is newer than your current version %s\n", latest, current)
 				fmt.Printf("To update visit: https://github.com/kbst/kbst/releases/tag/%v\n", latest)
 			}
 		}
