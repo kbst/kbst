@@ -36,7 +36,7 @@ jobs:
 
       - run: |
           git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ gihub.actor}}@ghactions"
+          git config --global user.email "${{ github.actor}}@ghactions"
 
       - run: kbst repo init gke
 
@@ -61,7 +61,7 @@ jobs:
 
       - run: |
           git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ gihub.actor}}@ghactions"
+          git config --global user.email "${{ github.actor}}@ghactions"
 
       - run: kbst repo init eks
 
@@ -86,7 +86,7 @@ jobs:
 
       - run: |
           git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ gihub.actor}}@ghactions"
+          git config --global user.email "${{ github.actor}}@ghactions"
 
       - run: kbst.exe repo init aks
 
