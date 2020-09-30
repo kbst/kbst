@@ -46,7 +46,7 @@ func DockerBuild(path string, args []string) (err error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("docker build error: %s", err)
 	}
 
 	return
@@ -60,7 +60,8 @@ func DockerRun(args []string) (err error) {
 
 	err = cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("docker run error: %s", err)
 	}
+
 	return
 }
