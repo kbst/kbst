@@ -35,14 +35,18 @@ func (l *lastEvent) Get() time.Time {
 	return l.ts
 }
 
-func DevApply(path string) (err error) {
+func DevApply(path string, skipWatch bool) (err error) {
 	applyLock := applyLock{}
 	lastEvent := lastEvent{}
 
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
+	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock, skipWatch)
+
+	if skipWatch {
+		return
+	}
 
 	// then start watching
 	watcher, err := fsnotify.NewWatcher()
@@ -62,7 +66,7 @@ func DevApply(path string) (err error) {
 
 				ts := time.Now()
 				lastEvent.Set(ts)
-				go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
+				go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock, skipWatch)
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
@@ -99,12 +103,12 @@ func DevDestroy(path string) (err error) {
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	runLocalTerraformContainer(path, true, ts, &lastEvent, &applyLock)
+	runLocalTerraformContainer(path, true, ts, &lastEvent, &applyLock, true)
 
 	return
 }
 
-func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock) {
+func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock, skipWatch bool) {
 	// postpone executing slightly
 	time.Sleep(200 * time.Millisecond)
 
@@ -200,6 +204,8 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 		log.Println(err)
 	}
 
-	log.Println("#### Watching for changes")
+	if skipWatch == false {
+		log.Println("#### Watching for changes")
+	}
 	return
 }

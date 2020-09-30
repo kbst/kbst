@@ -34,6 +34,18 @@ jobs:
 
       - run: kbst --version
 
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
+      - run: kbst repo init gke
+
+      - run: kbst --path kubestack-starter-gke manifest install prometheus clusterwide
+
+      - run: |
+          cd kubestack-starter-gke
+          kbst local apply --skip-watch
+
   test-darwin:
     runs-on: macos-latest
     needs: build
@@ -49,6 +61,14 @@ jobs:
 
       - run: kbst --version
 
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
+      - run: kbst repo init eks
+
+      - run: kbst --path kubestack-starter-eks manifest install prometheus clusterwide
+
   test-windows:
     runs-on: windows-latest
     needs: build
@@ -63,3 +83,11 @@ jobs:
       - run: echo "::add-path::${{ github.workspace }}"
 
       - run: kbst.exe --version
+
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
+      - run: kbst.exe repo init aks
+
+      - run: kbst.exe --path kubestack-starter-aks manifest install prometheus clusterwide
