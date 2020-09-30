@@ -1,0 +1,65 @@
+name: test
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: kbst/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --skip-publish --snapshot --rm-dist --skip-sign
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist/*.zip
+
+  test-linux:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+      
+      - run: unzip kbst_linux_amd64.zip
+
+      - run: echo "::add-path::${{ github.workspace }}"
+
+      - run: kbst --version
+
+  test-darwin:
+    runs-on: macos-latest
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+      
+      - run: unzip kbst_darwin_amd64.zip
+
+      - run: echo "::add-path::${{ github.workspace }}"
+
+      - run: kbst --version
+
+  test-windows:
+    runs-on: windows-latest
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+      
+      - run: unzip kbst_windows_amd64.zip
+
+      - run: echo "::add-path::${{ github.workspace }}"
+
+      - run: kbst.exe --version
