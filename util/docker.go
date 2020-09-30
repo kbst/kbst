@@ -30,7 +30,7 @@ func DockerImageTag(path string, suffix string) string {
 func DockerBuild(path string, args []string) (err error) {
 	buildArgs := append([]string{"build"}, args...)
 	cmd := exec.Command("docker", buildArgs...)
-	cmd.Env = []string{"DOCKER_BUILDKIT=1"}
+	cmd.Env = getEnv()
 	cmd.Dir = path
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -54,4 +54,22 @@ func DockerRun(args []string) (err error) {
 		return err
 	}
 	return
+}
+
+func getEnv() (env []string) {
+	env = []string{"DOCKER_BUILDKIT=1"}
+	envHome, okHome := os.LookupEnv("HOME")
+	// Mac and Win require HOME to be set due to upstream bug
+	// https://github.com/kbst/kbst/issues/7
+	if okHome {
+		env = append(env, fmt.Sprintf("HOME=%s", envHome))
+	}
+
+	// Win requires PATH for docker-credentials-desktop.exe
+	envPath, okPath := os.LookupEnv("PATH")
+	if okPath {
+		env = append(env, fmt.Sprintf("PATH=%s", envPath))
+	}
+
+	return env
 }
