@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var watch bool
+
 // devCmd represents the dev command
 var devCmd = &cobra.Command{
 	Use:     "local",
@@ -32,7 +34,7 @@ var devApplyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Watch and apply changes to the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		cli.DevApply(path)
+		cli.DevApply(path, watch)
 	},
 }
 var devDestroyCmd = &cobra.Command{
@@ -54,6 +56,7 @@ var localShellCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(devCmd)
 	devCmd.AddCommand(devApplyCmd)
+	devApplyCmd.Flags().BoolVar(&watch, "watch", true, "watch for changes")
 	devCmd.AddCommand(devDestroyCmd)
 	devCmd.AddCommand(localShellCmd)
 }

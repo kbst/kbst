@@ -34,6 +34,12 @@ jobs:
 
       - run: kbst --version
 
+      - run: kbst repo init gke
+
+      - run: kbst manifest install prometheus clusterwide
+
+      - run: kbst local apply --watch false
+
   test-darwin:
     runs-on: macos-latest
     needs: build
@@ -49,6 +55,12 @@ jobs:
 
       - run: kbst --version
 
+      - run: kbst repo init eks
+
+      - run: kbst manifest install prometheus clusterwide
+
+      - run: kbst local apply --watch false
+
   test-windows:
     runs-on: windows-latest
     needs: build
@@ -63,3 +75,9 @@ jobs:
       - run: echo "::add-path::${{ github.workspace }}"
 
       - run: kbst.exe --version
+
+      - run: kbst.exe repo init aks
+
+      - run: kbst.exe manifest install prometheus clusterwide
+
+      - run: kbst.exe local apply --watch false

@@ -35,7 +35,7 @@ func (l *lastEvent) Get() time.Time {
 	return l.ts
 }
 
-func DevApply(path string) (err error) {
+func DevApply(path string, watch bool) (err error) {
 	applyLock := applyLock{}
 	lastEvent := lastEvent{}
 
@@ -44,51 +44,54 @@ func DevApply(path string) (err error) {
 	lastEvent.Set(ts)
 	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
 
-	// then start watching
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatalf("test %s", err)
-	}
-	defer watcher.Close()
+	if watch {
+		// then start watching
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			log.Fatalf("test %s", err)
+		}
+		defer watcher.Close()
 
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case _, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
+		done := make(chan bool)
+		go func() {
+			for {
+				select {
+				case _, ok := <-watcher.Events:
+					if !ok {
+						return
+					}
 
-				ts := time.Now()
-				lastEvent.Set(ts)
-				go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
+					ts := time.Now()
+					lastEvent.Set(ts)
+					go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
+				case err, ok := <-watcher.Errors:
+					if !ok {
+						return
+					}
+					log.Println("error:", err)
 				}
-				log.Println("error:", err)
+			}
+		}()
+
+		basePath := filepath.Dir(path)
+		watchTargets := []string{
+			".",
+			"manifests/bases",
+			"manifests/overlays/apps",
+			"manifests/overlays/ops",
+			"manifests/overlays/loc",
+		}
+		for i := range watchTargets {
+			fullPath := filepath.Join(basePath, watchTargets[i])
+			err = watcher.Add(fullPath)
+			if err != nil {
+				log.Fatal(err)
 			}
 		}
-	}()
 
-	basePath := filepath.Dir(path)
-	watchTargets := []string{
-		".",
-		"manifests/bases",
-		"manifests/overlays/apps",
-		"manifests/overlays/ops",
-		"manifests/overlays/loc",
-	}
-	for i := range watchTargets {
-		fullPath := filepath.Join(basePath, watchTargets[i])
-		err = watcher.Add(fullPath)
-		if err != nil {
-			log.Fatal(err)
-		}
+		<-done
 	}
 
-	<-done
 	return
 }
 
