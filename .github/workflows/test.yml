@@ -40,9 +40,9 @@ jobs:
 
       - run: kbst repo init gke
 
-      - run: kbst manifest install prometheus clusterwide
+      - run: kbst --path kubestack-starter-gke manifest install prometheus clusterwide
 
-      - run: kbst local apply --watch false
+      - run: kbst --path kubestack-starter-gke local apply --watch false
 
   test-darwin:
     runs-on: macos-latest
@@ -65,9 +65,9 @@ jobs:
 
       - run: kbst repo init eks
 
-      - run: kbst manifest install prometheus clusterwide
+      - run: kbst --path kubestack-starter-eks manifest install prometheus clusterwide
 
-      - run: kbst local apply --watch false
+      - run: kbst --path kubestack-starter-eks local apply --watch false
 
   test-windows:
     runs-on: windows-latest
@@ -90,6 +90,6 @@ jobs:
 
       - run: kbst.exe repo init aks
 
-      - run: kbst.exe manifest install prometheus clusterwide
+      - run: kbst.exe --path kubestack-starter-aks manifest install prometheus clusterwide
 
-      - run: kbst.exe local apply --watch false
+      - run: kbst.exe --path kubestack-starter-aks local apply --watch false
