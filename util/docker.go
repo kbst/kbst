@@ -31,7 +31,7 @@ func DockerImageTag(path string, suffix string) string {
 func DockerBuild(path string, args []string) (err error) {
 	buildArgs := append([]string{"build"}, args...)
 	cmd := exec.Command("docker", buildArgs...)
-	cmd.Env = []string{"DOCKER_BUILDKIT=0"}
+	cmd.Env = []string{"DOCKER_BUILDKIT=1"}
 	if runtime.GOOS == "darwin" {
 		// temp workaround can be removed once upstream fix is released
 		// https://github.com/kbst/kbst/issues/7
