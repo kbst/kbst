@@ -43,8 +43,8 @@ jobs:
       - run: kbst --path kubestack-starter-gke manifest install prometheus clusterwide
 
       - run: |
-        cd kubestack-starter-gke
-        kbst local apply --watch false
+          cd kubestack-starter-gke
+          kbst local apply --watch false
 
   test-darwin:
     runs-on: macos-latest
