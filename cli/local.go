@@ -35,63 +35,64 @@ func (l *lastEvent) Get() time.Time {
 	return l.ts
 }
 
-func DevApply(path string, watch bool) (err error) {
+func DevApply(path string, skipWatch bool) (err error) {
 	applyLock := applyLock{}
 	lastEvent := lastEvent{}
 
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
+	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock, skipWatch)
 
-	if watch {
-		// then start watching
-		watcher, err := fsnotify.NewWatcher()
-		if err != nil {
-			log.Fatalf("test %s", err)
-		}
-		defer watcher.Close()
-
-		done := make(chan bool)
-		go func() {
-			for {
-				select {
-				case _, ok := <-watcher.Events:
-					if !ok {
-						return
-					}
-
-					ts := time.Now()
-					lastEvent.Set(ts)
-					go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock)
-				case err, ok := <-watcher.Errors:
-					if !ok {
-						return
-					}
-					log.Println("error:", err)
-				}
-			}
-		}()
-
-		basePath := filepath.Dir(path)
-		watchTargets := []string{
-			".",
-			"manifests/bases",
-			"manifests/overlays/apps",
-			"manifests/overlays/ops",
-			"manifests/overlays/loc",
-		}
-		for i := range watchTargets {
-			fullPath := filepath.Join(basePath, watchTargets[i])
-			err = watcher.Add(fullPath)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-
-		<-done
+	if skipWatch {
+		return
 	}
 
+	// then start watching
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatalf("test %s", err)
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case _, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+
+				ts := time.Now()
+				lastEvent.Set(ts)
+				go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock, skipWatch)
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				log.Println("error:", err)
+			}
+		}
+	}()
+
+	basePath := filepath.Dir(path)
+	watchTargets := []string{
+		".",
+		"manifests/bases",
+		"manifests/overlays/apps",
+		"manifests/overlays/ops",
+		"manifests/overlays/loc",
+	}
+	for i := range watchTargets {
+		fullPath := filepath.Join(basePath, watchTargets[i])
+		err = watcher.Add(fullPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	<-done
 	return
 }
 
@@ -102,12 +103,12 @@ func DevDestroy(path string) (err error) {
 	// first apply to bring up dev env
 	ts := time.Now()
 	lastEvent.Set(ts)
-	runLocalTerraformContainer(path, true, ts, &lastEvent, &applyLock)
+	runLocalTerraformContainer(path, true, ts, &lastEvent, &applyLock, true)
 
 	return
 }
 
-func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock) {
+func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock, skipWatch bool) {
 	// postpone executing slightly
 	time.Sleep(200 * time.Millisecond)
 
@@ -203,6 +204,8 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 		log.Println(err)
 	}
 
-	log.Println("#### Watching for changes")
+	if skipWatch == false {
+		log.Println("#### Watching for changes")
+	}
 	return
 }

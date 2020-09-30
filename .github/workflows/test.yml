@@ -44,7 +44,7 @@ jobs:
 
       - run: |
           cd kubestack-starter-gke
-          kbst local apply --watch false
+          kbst local apply --skip-watch
 
   test-darwin:
     runs-on: macos-latest
