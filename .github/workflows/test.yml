@@ -1,0 +1,93 @@
+name: test
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: kbst/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --skip-publish --snapshot --rm-dist --skip-sign
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist/*.zip
+
+  test-linux:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+      
+      - run: unzip kbst_linux_amd64.zip
+
+      - run: echo "::add-path::${{ github.workspace }}"
+
+      - run: kbst --version
+
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
+      - run: kbst repo init gke
+
+      - run: kbst --path kubestack-starter-gke manifest install prometheus clusterwide
+
+      - run: |
+          cd kubestack-starter-gke
+          kbst local apply --skip-watch
+
+  test-darwin:
+    runs-on: macos-latest
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+      
+      - run: unzip kbst_darwin_amd64.zip
+
+      - run: echo "::add-path::${{ github.workspace }}"
+
+      - run: kbst --version
+
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
+      - run: kbst repo init eks
+
+      - run: kbst --path kubestack-starter-eks manifest install prometheus clusterwide
+
+  test-windows:
+    runs-on: windows-latest
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist
+      
+      - run: unzip kbst_windows_amd64.zip
+
+      - run: echo "::add-path::${{ github.workspace }}"
+
+      - run: kbst.exe --version
+
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
+      - run: kbst.exe repo init aks
+
+      - run: kbst.exe --path kubestack-starter-aks manifest install prometheus clusterwide
