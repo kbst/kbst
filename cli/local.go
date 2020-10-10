@@ -144,9 +144,10 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
 		"."}
 
-	err = util.DockerBuild(absPath, buildArgs)
+	buildCmd := util.DockerBuildCommand(absPath, buildArgs)
+	err = buildCmd.Run()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("docker build error: %s", err)
 	}
 
 	// parse the Terraform config
@@ -199,9 +200,10 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 		imageTag,
 		"sh", "-c", applySh}
 
-	err = util.DockerRun(runArgs)
+	runCmd := util.DockerRunCommand(runArgs)
+	err = runCmd.Run()
 	if err != nil {
-		log.Println(err)
+		log.Printf("docker run error: %s", err)
 	}
 
 	if skipWatch == false {
