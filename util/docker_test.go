@@ -8,37 +8,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestPathHashChars(t *testing.T) {
-	path := "/tmp/test/path/one"
-	p := PathHash(path)
-	assert.Len(t, p, 7, nil)
-}
-
-func TestPathHashDestinct(t *testing.T) {
-	path1 := "/tmp/test/path/one"
-	p1 := PathHash(path1)
-
-	path2 := "/tmp/test/path/two"
-	p2 := PathHash(path2)
-
-	assert.NotEqual(t, p1, p2, nil)
-}
-
 func TestDockerImageTag(t *testing.T) {
-	path := "/tmp/test/path/one"
-	p := PathHash(path)
-	dt := DockerImageTag(path, "")
+	h := "testhash123"
+	dt := DockerImageTag(h, "")
 
-	assert.Equal(t, fmt.Sprintf("kbst:%s", p), dt, nil)
+	assert.Equal(t, fmt.Sprintf("kbst:%s", h), dt, nil)
 }
 
 func TestDockerImageTagSuffix(t *testing.T) {
-	path := "/tmp/test/path/one"
-	p := PathHash(path)
-	suffix := "test"
-	dt := DockerImageTag(path, suffix)
+	h := "testhash123"
+	s := "test"
+	dt := DockerImageTag(h, s)
 
-	assert.Equal(t, fmt.Sprintf("kbst:%s-%s", p, suffix), dt, nil)
+	assert.Equal(t, fmt.Sprintf("kbst:%s-%s", h, s), dt, nil)
 }
 
 func TestDockerBuildCommand(t *testing.T) {

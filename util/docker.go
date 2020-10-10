@@ -1,24 +1,12 @@
 package util
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
 )
 
-func PathHash(path string) string {
-	h := sha512.New()
-
-	h.Write([]byte(path))
-
-	return hex.EncodeToString(h.Sum(nil))[0:7]
-}
-
-func DockerImageTag(path string, suffix string) string {
-	hash := PathHash(path)
-
+func DockerImageTag(hash string, suffix string) string {
 	tag := fmt.Sprintf("kbst:%s", hash)
 	if suffix != "" {
 		tag = fmt.Sprintf("%s-%s", tag, suffix)

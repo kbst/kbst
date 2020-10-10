@@ -16,6 +16,8 @@ limitations under the License.
 package cmd
 
 import (
+	"log"
+
 	"github.com/kbst/kbst/cli"
 	"github.com/spf13/cobra"
 )
@@ -30,18 +32,38 @@ var devCmd = &cobra.Command{
 }
 
 // devCmd represents the dev command
-var devApplyCmd = &cobra.Command{
+var localApplyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Watch and apply changes to the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		cli.DevApply(path, skipWatch)
+		tc, err := cli.NewLocalTerraformContainer(path, false)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		rw := cli.NewRepoWatcher(tc)
+
+		local := cli.Local{Runner: tc, Watcher: &rw}
+		err = local.Apply(path, skipWatch)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	},
 }
-var devDestroyCmd = &cobra.Command{
+var localDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		cli.DevDestroy(path)
+		tc, err := cli.NewLocalTerraformContainer(path, false)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		local := cli.Local{Runner: tc}
+		err = local.Destroy()
+		if err != nil {
+			log.Fatalln(err)
+		}
 	},
 }
 
@@ -49,17 +71,16 @@ var localShellCmd = &cobra.Command{
 	Use:   "shell",
 	Short: "Open a shell inside the local environment container",
 	Run: func(cmd *cobra.Command, args []string) {
-		cli.DevDestroy(path)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(devCmd)
 
-	devCmd.AddCommand(devApplyCmd)
-	devApplyCmd.Flags().BoolVar(&skipWatch, "skip-watch", false, "watch for changes")
+	devCmd.AddCommand(localApplyCmd)
+	localApplyCmd.Flags().BoolVar(&skipWatch, "skip-watch", false, "watch for changes")
 
-	devCmd.AddCommand(devDestroyCmd)
+	devCmd.AddCommand(localDestroyCmd)
 
-	devCmd.AddCommand(localShellCmd)
+	//devCmd.AddCommand(localShellCmd)
 }
