@@ -18,6 +18,10 @@ type Entry struct {
 }
 
 func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
+	if len(e.Versions) < 1 {
+		return v, fmt.Errorf("No versions for '%s'", e.Name)
+	}
+
 	v = e.Versions[0]
 	if r != "latest" {
 		var cv Version
@@ -30,7 +34,7 @@ func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
 		}
 
 		if cv.Name != r {
-			return v, fmt.Errorf(
+			return Version{}, fmt.Errorf(
 				"'%s' is not a valid version, try the latest version '%s'",
 				r,
 				v.Name,
@@ -47,32 +51,32 @@ type CliJSON struct {
 	Cli       Entry            `json:"cli"`
 }
 
-func GetCatalog() (catalog map[string]Entry, err error) {
-	cliJson, err := getCliJson()
+func GetCatalog(d Downloader) (catalog map[string]Entry, err error) {
+	cliJson, err := getCliJson(d)
 	if err != nil {
 		return catalog, err
 	}
 	return cliJson.Catalog, nil
 }
 
-func GetFramework() (framework Entry, err error) {
-	cliJson, err := getCliJson()
+func GetFramework(d Downloader) (framework Entry, err error) {
+	cliJson, err := getCliJson(d)
 	if err != nil {
 		return framework, err
 	}
 	return cliJson.Framework, nil
 }
 
-func GetCli() (cli Entry, err error) {
-	cliJson, err := getCliJson()
+func GetCli(d Downloader) (cli Entry, err error) {
+	cliJson, err := getCliJson(d)
 	if err != nil {
 		return cli, err
 	}
 	return cliJson.Cli, nil
 }
 
-func getCliJson() (cliJson CliJSON, err error) {
-	resp, err := CachedDownload("https://www.kubestack.com/cli.json")
+func getCliJson(d Downloader) (cliJson CliJSON, err error) {
+	resp, err := d.Download("https://www.kubestack.com/cli.json")
 	if err != nil {
 		return cliJson, err
 	}

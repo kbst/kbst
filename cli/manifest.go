@@ -18,7 +18,8 @@ func ManifestInstall(entry string, variant string, overlay string, release strin
 	}
 
 	// download entry archive
-	resp, err := util.CachedDownload(url)
+	d := util.CachedDownloader{}
+	resp, err := d.Download(url)
 	if err != nil {
 		return err
 	}
@@ -233,7 +234,7 @@ func getManifestDownloadUrl(entry string, release string, gitRef string) (url st
 	}
 
 	// determine version
-	catalog, err := util.GetCatalog()
+	catalog, err := util.GetCatalog(util.CachedDownloader{})
 	if err != nil {
 		return url, err
 	}

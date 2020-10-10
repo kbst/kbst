@@ -35,7 +35,7 @@ var rootCmd = &cobra.Command{
 	Short: "Kubestack Framework CLI",
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		// check if a newer CLI version is available
-		cli, err := util.GetCli()
+		cli, err := util.GetCli(util.CachedDownloader{})
 		if err != nil {
 			return
 		}

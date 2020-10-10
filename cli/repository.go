@@ -19,7 +19,8 @@ func RepoInit(starter string, release string, gitRef string, path string) (err e
 		return err
 	}
 
-	resp, err := util.CachedDownload(url)
+	d := util.CachedDownloader{}
+	resp, err := d.Download(url)
 	if err != nil {
 		return err
 	}
@@ -83,7 +84,7 @@ func getDownloadUrl(starter string, release string, gitRef string) (url string, 
 	}
 
 	// determine version
-	framework, err := util.GetFramework()
+	framework, err := util.GetFramework(util.CachedDownloader{})
 	if err != nil {
 		return url, err
 	}
