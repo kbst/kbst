@@ -229,7 +229,7 @@ func getManifestDownloadUrl(entry string, release string, gitRef string) (url st
 		return fmt.Sprintf(
 			"https://storage.googleapis.com/dev.catalog.kubestack.com/%s-%s.zip",
 			entry,
-			release,
+			gitRef,
 		), nil
 	}
 
