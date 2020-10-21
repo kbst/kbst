@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -37,18 +36,6 @@ func (mtc MockTerraformContainer) Run() (err error) {
 	}
 
 	return nil
-}
-
-type MockRepositoryWatcher struct {
-	throw bool
-}
-
-func (mrw MockRepositoryWatcher) Start(path string) {
-	if mrw.throw {
-		log.Fatalf("mock error")
-	}
-
-	return
 }
 
 func TestLocalApply(t *testing.T) {
