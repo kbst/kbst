@@ -1,9 +1,12 @@
 package util
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,25 +54,25 @@ func TestGetReleaseOrLatestVersionSpecificMissing(t *testing.T) {
 type MockDownloader struct{}
 
 func (c MockDownloader) Download(url string) (resp *http.Response, err error) {
-	r := &http.Response{Body: http.NoBody}
+	p := filepath.Join(fixturesPath, "cli.json")
+	f, err := ioutil.ReadFile(p)
+	if err != nil {
+		return resp, err
+	}
+
+	r := &http.Response{
+		Body: ioutil.NopCloser(bytes.NewReader(f)),
+	}
 	return r, nil
 }
 
-func TestGetCatalog(t *testing.T) {
-	c, err := GetCatalog(MockDownloader{})
-	assert.IsType(t, map[string]Entry{}, c, nil)
-	assert.Equal(t, nil, err, nil)
-}
+func TestCliJSON(t *testing.T) {
+	cj := CliJSON{}
+	err := cj.Load(MockDownloader{})
 
-func TestFramework(t *testing.T) {
-	c, err := GetFramework(MockDownloader{})
-	assert.IsType(t, Entry{}, c, nil)
-	assert.Equal(t, nil, err, nil)
-}
-
-func TestGetCli(t *testing.T) {
-	c, err := GetCli(MockDownloader{})
-	assert.IsType(t, Entry{}, c, nil)
+	assert.IsType(t, map[string]Entry{}, cj.Catalog, nil)
+	assert.IsType(t, Entry{}, cj.Framework, nil)
+	assert.IsType(t, Entry{}, cj.Cli, nil)
 	assert.Equal(t, nil, err, nil)
 }
 
@@ -79,20 +82,12 @@ func (c MockDownloaderError) Download(url string) (resp *http.Response, err erro
 	return resp, errors.New("Mock HTTP error")
 }
 
-func TestGetCatalogError(t *testing.T) {
-	c, err := GetCatalog(MockDownloaderError{})
-	assert.IsType(t, map[string]Entry{}, c, nil)
-	assert.Equal(t, fmt.Errorf("Mock HTTP error"), err, nil)
-}
+func TestCliJSONError(t *testing.T) {
+	cj := CliJSON{}
+	err := cj.Load(MockDownloaderError{})
 
-func TestGetFrameworkError(t *testing.T) {
-	c, err := GetFramework(MockDownloaderError{})
-	assert.IsType(t, Entry{}, c, nil)
-	assert.Equal(t, fmt.Errorf("Mock HTTP error"), err, nil)
-}
-
-func TestGetCliError(t *testing.T) {
-	c, err := GetCli(MockDownloaderError{})
-	assert.IsType(t, Entry{}, c, nil)
-	assert.Equal(t, fmt.Errorf("Mock HTTP error"), err, nil)
+	assert.IsType(t, map[string]Entry{}, cj.Catalog, nil)
+	assert.IsType(t, Entry{}, cj.Framework, nil)
+	assert.IsType(t, Entry{}, cj.Cli, nil)
+	assert.Error(t, err, nil)
 }

@@ -19,6 +19,7 @@ require (
 	golang.org/x/mod v0.0.0-20190513183733-4bf6d317e70e
 	golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7
+	gopkg.in/yaml.v2 v2.3.0
 	sigs.k8s.io/kustomize/api v0.6.0
 	sigs.k8s.io/yaml v1.2.0
 )

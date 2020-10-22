@@ -1,15 +1,11 @@
 package util
 
 import (
-	"os"
 	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-var cwd, _ = os.Getwd()
-var fixturesPath = path.Join(cwd, "test_fixtures")
 
 func TestPathHashChars(t *testing.T) {
 	p, _ := PathHash(fixturesPath)

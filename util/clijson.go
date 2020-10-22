@@ -51,43 +51,19 @@ type CliJSON struct {
 	Cli       Entry            `json:"cli"`
 }
 
-func GetCatalog(d Downloader) (catalog map[string]Entry, err error) {
-	cliJson, err := getCliJson(d)
-	if err != nil {
-		return catalog, err
-	}
-	return cliJson.Catalog, nil
-}
-
-func GetFramework(d Downloader) (framework Entry, err error) {
-	cliJson, err := getCliJson(d)
-	if err != nil {
-		return framework, err
-	}
-	return cliJson.Framework, nil
-}
-
-func GetCli(d Downloader) (cli Entry, err error) {
-	cliJson, err := getCliJson(d)
-	if err != nil {
-		return cli, err
-	}
-	return cliJson.Cli, nil
-}
-
-func getCliJson(d Downloader) (cliJson CliJSON, err error) {
+func (cj *CliJSON) Load(d Downloader) (err error) {
 	resp, err := d.Download("https://www.kubestack.com/cli.json")
 	if err != nil {
-		return cliJson, err
+		return err
 	}
 	defer resp.Body.Close()
 
 	respJson, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return cliJson, err
+		return err
 	}
 
-	json.Unmarshal([]byte(respJson), &cliJson)
+	json.Unmarshal([]byte(respJson), &cj)
 
-	return cliJson, nil
+	return nil
 }

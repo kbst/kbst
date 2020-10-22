@@ -14,9 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var cwd, _ = os.Getwd()
-var fixturesPath = filepath.Join(cwd, "../test_fixtures")
-
 func TestLastEvent(t *testing.T) {
 	le := lastEvent{}
 	ts := time.Now()

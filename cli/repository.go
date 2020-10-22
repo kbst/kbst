@@ -5,22 +5,26 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
-	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/kbst/kbst/util"
 )
 
-func RepoInit(starter string, release string, gitRef string, path string) (err error) {
+type Repo struct {
+	Framework  util.Entry
+	Downloader util.Downloader
+}
+
+func (r Repo) Init(starter string, release string, gitRef string, path string) (err error) {
 	// download archive
-	url, err := getDownloadUrl(starter, release, gitRef)
+	url, err := r.downloadUrl(starter, release, gitRef)
 	if err != nil {
 		return err
 	}
 
-	d := util.CachedDownloader{}
-	resp, err := d.Download(url)
+	resp, err := r.Downloader.Download(url)
 	if err != nil {
 		return err
 	}
@@ -74,7 +78,7 @@ func RepoInit(starter string, release string, gitRef string, path string) (err e
 	return
 }
 
-func getDownloadUrl(starter string, release string, gitRef string) (url string, err error) {
+func (r Repo) downloadUrl(starter string, release string, gitRef string) (url string, err error) {
 	if gitRef != "" {
 		return fmt.Sprintf(
 			"https://storage.googleapis.com/dev.quickstart.kubestack.com/kubestack-starter-%s-%s.zip",
@@ -84,22 +88,23 @@ func getDownloadUrl(starter string, release string, gitRef string) (url string, 
 	}
 
 	// determine version
-	framework, err := util.GetFramework(util.CachedDownloader{})
-	if err != nil {
-		return url, err
-	}
-
-	version, err := framework.GetReleaseOrLatest(release)
+	version, err := r.Framework.GetReleaseOrLatest(release)
 	if err != nil {
 		return url, err
 	}
 
 	url, ok := version.Archives[starter]
 	if !ok {
+		options := []string{}
+		for k := range version.Archives {
+			options = append(options, k)
+		}
+		sort.Strings(options)
+
 		return url, fmt.Errorf(
 			"'%s' is not a valid starter name, choose one of %v",
 			starter,
-			reflect.ValueOf(version.Archives).MapKeys(),
+			options,
 		)
 	}
 
