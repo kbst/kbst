@@ -81,12 +81,10 @@ func (rw RepoWatcher) Start(path string) {
 
 func (rw RepoWatcher) handleEvent(done chan bool) {
 	for {
-		log.Println("before done")
 		select {
 		case <-done:
 			return
 		default:
-			log.Println("after done")
 			select {
 			case _, ok := <-rw.w.Events:
 				if !ok {
