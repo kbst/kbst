@@ -1,10 +1,13 @@
-build:
+test:
+	go test ./...
+
+build: test
 	go build -o kbst .
 
-install:
+install: test
 	go install .
 
-snapshot:
+snapshot: test
 	goreleaser release --skip-publish --snapshot --rm-dist --skip-sign
 
 tidy:

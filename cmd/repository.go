@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/kbst/kbst/cli"
+	"github.com/kbst/kbst/util"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,16 @@ var repositoryInitCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		starter := args[0]
-		err := cli.RepoInit(starter, repoRelease, repoGitRef, path)
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		r := cli.Repo{
+			Framework:  cj.Framework,
+			Downloader: util.CachedDownloader{},
+		}
+		err = r.Init(starter, repoRelease, repoGitRef, path)
 		if err != nil {
 			log.Fatal(err)
 		}

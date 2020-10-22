@@ -5,20 +5,25 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/kbst/kbst/util"
 )
 
-func ManifestInstall(entry string, variant string, overlay string, release string, gitRef string, path string, skipEditKustomization bool) (err error) {
-	url, err := getManifestDownloadUrl(entry, release, gitRef)
+type Manifest struct {
+	Catalog    map[string]util.Entry
+	Downloader util.Downloader
+}
+
+func (m Manifest) Install(entry string, variant string, overlay string, release string, gitRef string, path string, skipEditKustomization bool) (err error) {
+	url, err := m.getManifestDownloadUrl(entry, release, gitRef)
 	if err != nil {
 		return err
 	}
 
 	// download entry archive
-	resp, err := util.CachedDownload(url)
+	resp, err := m.Downloader.Download(url)
 	if err != nil {
 		return err
 	}
@@ -40,7 +45,7 @@ func ManifestInstall(entry string, variant string, overlay string, release strin
 		}
 
 		// check variant is in entry
-		_, err = getEntryVariants(tempEntry, entry, variant)
+		_, err = m.getEntryVariants(tempEntry, entry, variant)
 		if err != nil {
 			return err
 		}
@@ -91,12 +96,12 @@ func ManifestInstall(entry string, variant string, overlay string, release strin
 	return nil
 }
 
-func ManifestRemove(entry string, path string, skipEditKustomization bool) (err error) {
+func (m Manifest) Remove(entry string, path string, skipEditKustomization bool) (err error) {
 	entryPath := filepath.Join(path, "manifests", "bases", entry)
 
 	if skipEditKustomization == false {
 		overlaysPath := filepath.Join(path, "manifests", "overlays")
-		overlays, err := getOverlays(overlaysPath)
+		overlays, err := m.getOverlays(overlaysPath)
 		if err != nil {
 			return err
 		}
@@ -153,14 +158,14 @@ func ManifestRemove(entry string, path string, skipEditKustomization bool) (err 
 	return nil
 }
 
-func ManifestUpdate(entry string, overlay string, release string, gitRef string, path string) (err error) {
-	err = ManifestRemove(entry, path, true)
+func (m Manifest) Update(entry string, overlay string, release string, gitRef string, path string) (err error) {
+	err = m.Remove(entry, path, true)
 	if err != nil {
 		return err
 	}
 
 	variant := ""
-	err = ManifestInstall(entry, variant, overlay, release, gitRef, path, true)
+	err = m.Install(entry, variant, overlay, release, gitRef, path, true)
 	if err != nil {
 		return err
 	}
@@ -168,7 +173,7 @@ func ManifestUpdate(entry string, overlay string, release string, gitRef string,
 	return nil
 }
 
-func getEntryVariants(path string, entry string, variant string) (variants []string, err error) {
+func (m Manifest) getEntryVariants(path string, entry string, variant string) (variants []string, err error) {
 	found := false
 	entryPath := filepath.Join(path, entry)
 	entryPathEntries, err := ioutil.ReadDir(entryPath)
@@ -197,7 +202,7 @@ func getEntryVariants(path string, entry string, variant string) (variants []str
 	return variants, nil
 }
 
-func getOverlays(path string) (overlays []string, err error) {
+func (m Manifest) getOverlays(path string) (overlays []string, err error) {
 	overlayPathEntries, err := ioutil.ReadDir(path)
 	if err != nil {
 		return nil, err
@@ -223,27 +228,29 @@ func getOverlays(path string) (overlays []string, err error) {
 	return overlays, nil
 }
 
-func getManifestDownloadUrl(entry string, release string, gitRef string) (url string, err error) {
+func (m Manifest) getManifestDownloadUrl(entry string, release string, gitRef string) (url string, err error) {
 	if gitRef != "" {
 		return fmt.Sprintf(
 			"https://storage.googleapis.com/dev.catalog.kubestack.com/%s-%s.zip",
 			entry,
-			release,
+			gitRef,
 		), nil
 	}
 
 	// determine version
-	catalog, err := util.GetCatalog()
-	if err != nil {
-		return url, err
-	}
 
-	current, ok := catalog[entry]
+	current, ok := m.Catalog[entry]
 	if !ok {
+		options := []string{}
+		for k := range m.Catalog {
+			options = append(options, k)
+		}
+		sort.Strings(options)
+
 		return url, fmt.Errorf(
 			"'%s' is not a valid entry name, choose one of %v",
 			entry,
-			reflect.ValueOf(catalog).MapKeys(),
+			options,
 		)
 	}
 

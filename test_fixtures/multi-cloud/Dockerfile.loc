@@ -1,0 +1,10 @@
+FROM kubestack/framework:v0.10.0-beta.0-kind
+
+ARG UID
+ARG GID
+
+RUN mkdir -p /infra/terraform.tfstate.d &&\
+    chown ${UID}:${GID} -R /infra
+
+COPY manifests /infra/manifests
+COPY *.tf *.tfvars /infra/

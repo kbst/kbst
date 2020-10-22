@@ -35,14 +35,15 @@ var rootCmd = &cobra.Command{
 	Short: "Kubestack Framework CLI",
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		// check if a newer CLI version is available
-		cli, err := util.GetCli()
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
 		if err != nil {
 			return
 		}
 
-		if len(cli.Versions) > 1 {
+		if len(cj.Cli.Versions) > 1 {
 			current := Version
-			latest := cli.Versions[0].Name
+			latest := cj.Cli.Versions[0].Name
 
 			if semver.Compare(current, latest) == -1 {
 				fmt.Printf("The latest version %s of `kbst` is newer than your current version %s\n", latest, current)

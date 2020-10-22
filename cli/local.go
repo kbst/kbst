@@ -1,178 +1,140 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"os/exec"
 	"os/user"
-	"path/filepath"
+	"sort"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/kbst/kbst/util"
-	"gopkg.in/fsnotify.v1"
 )
 
-type applyLock struct {
-	mux sync.Mutex
+type Local struct {
+	Runner  TerraformContainer
+	Watcher Watcher
 }
 
-type lastEvent struct {
-	ts  time.Time
-	mux sync.Mutex
-}
-
-func (l *lastEvent) Set(ts time.Time) {
-	l.mux.Lock()
-	l.ts = ts
-	l.mux.Unlock()
-}
-
-func (l *lastEvent) Get() time.Time {
-	l.mux.Lock()
-	defer l.mux.Unlock()
-	return l.ts
-}
-
-func DevApply(path string, skipWatch bool) (err error) {
-	applyLock := applyLock{}
-	lastEvent := lastEvent{}
-
-	// first apply to bring up dev env
-	ts := time.Now()
-	lastEvent.Set(ts)
-	runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock, skipWatch)
+func (l *Local) Apply(path string, skipWatch bool) (err error) {
+	// provision the development environment
+	err = l.Runner.Run()
+	if err != nil {
+		return errors.New(fmt.Sprintf("provisioning local environment error: %s", err))
+	}
 
 	if skipWatch {
 		return
 	}
 
-	// then start watching
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatalf("test %s", err)
-	}
-	defer watcher.Close()
-
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case _, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-
-				ts := time.Now()
-				lastEvent.Set(ts)
-				go runLocalTerraformContainer(path, false, ts, &lastEvent, &applyLock, skipWatch)
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
-			}
-		}
-	}()
-
-	basePath := filepath.Dir(path)
-	watchTargets := []string{
-		".",
-		"manifests/bases",
-		"manifests/overlays/apps",
-		"manifests/overlays/ops",
-		"manifests/overlays/loc",
-	}
-	for i := range watchTargets {
-		fullPath := filepath.Join(basePath, watchTargets[i])
-		err = watcher.Add(fullPath)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	<-done
-	return
-}
-
-func DevDestroy(path string) (err error) {
-	applyLock := applyLock{}
-	lastEvent := lastEvent{}
-
-	// first apply to bring up dev env
-	ts := time.Now()
-	lastEvent.Set(ts)
-	runLocalTerraformContainer(path, true, ts, &lastEvent, &applyLock, true)
+	// start watching for repository changes
+	l.Watcher.Start(path)
 
 	return
 }
 
-func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEvent *lastEvent, applyLock *applyLock, skipWatch bool) {
-	// postpone executing slightly
-	time.Sleep(200 * time.Millisecond)
-
-	// check if while we were sleeping another fs event queued an apply
-	if ts != lastEvent.Get() {
-		// cancel apply
-		return
-	}
-
-	// even if we're the latest queued apply
-	// we need to wait for a potential previous apply to finish
-	applyLock.mux.Lock()
-	defer applyLock.mux.Unlock()
-
-	absPath, err := filepath.Abs(path)
+func (l *Local) Destroy() (err error) {
+	err = l.Runner.Run()
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
 
-	// get current user id to set chown during docker build
-	u, err := user.Current()
+	return
+}
+
+type TerraformContainer interface {
+	Run() (err error)
+}
+
+type LocalTerraformContainer struct {
+	destroy bool
+	hash    string
+	module  tfconfig.Module
+	path    string
+}
+
+func NewLocalTerraformContainer(path string, destroy bool) (ltc LocalTerraformContainer, err error) {
+	ltc.path = path
+	ltc.destroy = destroy
+
+	hash, err := util.PathHash(path)
 	if err != nil {
-		log.Fatalln(err)
+		return ltc, fmt.Errorf("path error: %s", err)
 	}
-
-	imageTag := util.DockerImageTag(absPath, "loc")
-
-	// build the docker image for this apply run
-	buildArgs := []string{
-		"--file", "Dockerfile.loc",
-		"--tag", imageTag,
-		"--build-arg", fmt.Sprintf("UID=%s", u.Uid),
-		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
-		"."}
-
-	err = util.DockerBuild(absPath, buildArgs)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	ltc.hash = hash
 
 	// parse the Terraform config
-	module, _ := tfconfig.LoadModule(filepath.Dir(path))
+	module, diags := tfconfig.LoadModule(ltc.path)
+	if diags.HasErrors() {
+		return ltc, fmt.Errorf("error parsing terraform config: %s", err)
+	}
+	ltc.module = *module
 
-	// prepare list of all module sources that need to be rewritten
+	return ltc, nil
+}
+
+func (ltc LocalTerraformContainer) Run() (err error) {
+	buildCmd := ltc.buildCmd()
+	err = buildCmd.Run()
+	if err != nil {
+		return fmt.Errorf("docker build error: %s", err)
+	}
+
+	runCmd := ltc.runCmd()
+	err = runCmd.Run()
+	if err != nil {
+		return fmt.Errorf("docker run error: %s", err)
+	}
+
+	return
+}
+
+func (ltc LocalTerraformContainer) buildCmd() (buildCmd exec.Cmd) {
+	args := ltc.buildArgs()
+	return util.DockerBuildCommand(ltc.path, args)
+}
+
+func (ltc LocalTerraformContainer) runCmd() (runCmd exec.Cmd) {
+	// run terraform apply/destroy script inside container
+	runArgs := ltc.runArgs(ltc.module.ModuleCalls)
+
+	runCmd = util.DockerRunCommand(runArgs)
+
+	return runCmd
+}
+
+func (ltc LocalTerraformContainer) imageTag() (tag string) {
+	return util.DockerImageTag(ltc.hash, "loc")
+}
+
+func (ltc LocalTerraformContainer) rewriteModules(moduleCalls map[string]*tfconfig.ModuleCall) []string {
 	sedArgs := []string{}
-	for _, value := range module.ModuleCalls {
+	for _, value := range moduleCalls {
+		// prepare original and replacement sources
+		// escape slashes
 		o := strings.Replace(value.Source, "/", "\\/", -1)
-		r := strings.Replace(value.Source, "/cluster?", "/cluster-local?", 1)
-		r = strings.Replace(r, "/", "\\/", -1)
+		r := strings.Replace(value.Source, "/", "\\/", -1)
+
+		// replace cluster with cluster-local module
+		r = strings.Replace(r, "/cluster?", "/cluster-local?", 1)
+
+		// concatenate and append the sed flag
 		arg := fmt.Sprintf("-e s#%s#%s#g", o, r)
 		sedArgs = append(sedArgs, arg)
 	}
+	sort.Strings(sedArgs)
+	return sedArgs
+}
 
-	// prepare volumes
-	tfStatePathHash := util.PathHash(absPath)
-	tfStatePath := "/infra/terraform.tfstate.d"
-	tfStateVolume := fmt.Sprintf("kbst-loc-terraform-state-%s:%s", tfStatePathHash, tfStatePath)
-	dockerSocketVolume := "/var/run/docker.sock:/var/run/docker.sock"
-
+func (ltc LocalTerraformContainer) renderApplySh(sedArgs []string, destroy bool) string {
 	tfCommand := "apply"
 	if destroy {
 		tfCommand = "destroy"
 	}
-	applySh := fmt.Sprintf(`
+
+	sh := fmt.Sprintf(`
 	#!/bin/sh
 	set -e
 	
@@ -190,22 +152,52 @@ func runLocalTerraformContainer(path string, destroy bool, ts time.Time, lastEve
 	terraform %s --auto-approve
 	`, strings.Join(sedArgs, " "), tfCommand)
 
-	runArgs := []string{
+	return sh
+}
+
+func (ltc LocalTerraformContainer) buildArgs() (buildArgs []string) {
+	// get current user id to set chown during docker build
+	u, err := user.Current()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	tag := ltc.imageTag()
+
+	// build the docker image for this apply run
+	buildArgs = []string{
+		"--file", "Dockerfile.loc",
+		"--tag", tag,
+		"--build-arg", fmt.Sprintf("UID=%s", u.Uid),
+		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
+		"."}
+
+	return buildArgs
+}
+
+func (ltc LocalTerraformContainer) runArgs(moduleCalls map[string]*tfconfig.ModuleCall) (runArgs []string) {
+	// prepare list of all module sources that need to be rewritten
+	sedArgs := ltc.rewriteModules(moduleCalls)
+
+	// render the script to run
+	applySh := ltc.renderApplySh(sedArgs, ltc.destroy)
+
+	// prepare volumes
+	stateVolume := fmt.Sprintf(
+		"kbst-loc-terraform-state-%s:%s",
+		ltc.hash,
+		"/infra/terraform.tfstate.d",
+	)
+	socketVolume := "/var/run/docker.sock:/var/run/docker.sock"
+
+	runArgs = []string{
 		"--rm",
 		"--privileged",
-		"--volume", tfStateVolume,
-		"--volume", dockerSocketVolume,
+		"--volume", stateVolume,
+		"--volume", socketVolume,
 		"--net", "host",
-		imageTag,
+		ltc.imageTag(),
 		"sh", "-c", applySh}
 
-	err = util.DockerRun(runArgs)
-	if err != nil {
-		log.Println(err)
-	}
-
-	if skipWatch == false {
-		log.Println("#### Watching for changes")
-	}
-	return
+	return runArgs
 }

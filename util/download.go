@@ -9,7 +9,13 @@ import (
 	"github.com/gregjones/httpcache/diskcache"
 )
 
-func CachedDownload(url string) (resp *http.Response, err error) {
+type Downloader interface {
+	Download(url string) (resp *http.Response, err error)
+}
+
+type CachedDownloader struct{}
+
+func (c CachedDownloader) Download(url string) (resp *http.Response, err error) {
 	cachePath, err := xdg.CacheFile("kbst/http/file")
 	if err != nil {
 		return resp, err

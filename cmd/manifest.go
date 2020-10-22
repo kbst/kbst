@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/kbst/kbst/cli"
+	"github.com/kbst/kbst/util"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +41,16 @@ var manifestInstallCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		entry := args[0]
 		variant := args[1]
-		err := cli.ManifestInstall(entry, variant, manifestOverlay, manifestRelease, manifestGitRef, path, manifestSkipEditKustomization)
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		m := cli.Manifest{
+			Catalog:    cj.Catalog,
+			Downloader: util.CachedDownloader{},
+		}
+		err = m.Install(entry, variant, manifestOverlay, manifestRelease, manifestGitRef, path, manifestSkipEditKustomization)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -53,7 +63,16 @@ var manifestRemoveCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		entry := args[0]
-		err := cli.ManifestRemove(entry, path, manifestSkipEditKustomization)
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		m := cli.Manifest{
+			Catalog:    cj.Catalog,
+			Downloader: util.CachedDownloader{},
+		}
+		err = m.Remove(entry, path, manifestSkipEditKustomization)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,7 +85,16 @@ var manifestUpdateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		entry := args[0]
-		err := cli.ManifestUpdate(entry, manifestOverlay, manifestRelease, manifestGitRef, path)
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		m := cli.Manifest{
+			Catalog:    cj.Catalog,
+			Downloader: util.CachedDownloader{},
+		}
+		err = m.Update(entry, manifestOverlay, manifestRelease, manifestGitRef, path)
 		if err != nil {
 			log.Fatal(err)
 		}
