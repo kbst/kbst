@@ -9,7 +9,7 @@ import (
 
 func TestNewRepoWatcher(t *testing.T) {
 	tc := MockTerraformContainer{}
-	rw := NewRepoWatcher(tc)
+	rw := NewRepoWatcher(&tc)
 
 	assert.IsType(t, &lastEvent{}, rw.le, nil)
 	assert.IsType(t, &applyLock{}, rw.al, nil)

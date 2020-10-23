@@ -24,10 +24,13 @@ func TestLastEvent(t *testing.T) {
 }
 
 type MockTerraformContainer struct {
-	throw bool
+	runCount int
+	throw    bool
 }
 
-func (mtc MockTerraformContainer) Run() (err error) {
+func (mtc *MockTerraformContainer) Run() (err error) {
+	mtc.runCount++
+
 	if mtc.throw {
 		return errors.New("mock error")
 	}
@@ -37,9 +40,9 @@ func (mtc MockTerraformContainer) Run() (err error) {
 
 func TestLocalApply(t *testing.T) {
 	mtc := MockTerraformContainer{}
-	rw := NewRepoWatcher(mtc)
+	rw := NewRepoWatcher(&mtc)
 
-	local := Local{Runner: mtc, Watcher: rw}
+	local := Local{Runner: &mtc, Watcher: rw}
 	p := filepath.Join(fixturesPath, "multi-cloud")
 
 	// start a watch
@@ -56,12 +59,14 @@ func TestLocalApply(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	assert.Equal(t, 2, mtc.runCount, nil)
 }
 
 func TestLocalApplyProvisionError(t *testing.T) {
 	mtc := MockTerraformContainer{throw: true}
 
-	local := Local{Runner: mtc}
+	local := Local{Runner: &mtc}
 	p := filepath.Join(fixturesPath, "multi-cloud")
 	err := local.Apply(p, false)
 
@@ -71,7 +76,7 @@ func TestLocalApplyProvisionError(t *testing.T) {
 func TestLocalApplySkipWatch(t *testing.T) {
 	mtc := MockTerraformContainer{}
 
-	local := Local{Runner: mtc}
+	local := Local{Runner: &mtc}
 	p := filepath.Join(fixturesPath, "multi-cloud")
 	err := local.Apply(p, true)
 
@@ -81,7 +86,7 @@ func TestLocalApplySkipWatch(t *testing.T) {
 func TestLocalDestroy(t *testing.T) {
 	mtc := MockTerraformContainer{}
 
-	local := Local{Runner: mtc}
+	local := Local{Runner: &mtc}
 	err := local.Destroy()
 
 	assert.Equal(t, nil, err, nil)
@@ -90,7 +95,7 @@ func TestLocalDestroy(t *testing.T) {
 func TestLocalDestroyError(t *testing.T) {
 	mtc := MockTerraformContainer{throw: true}
 
-	local := Local{Runner: mtc}
+	local := Local{Runner: &mtc}
 	err := local.Destroy()
 
 	assert.Error(t, err, nil)
