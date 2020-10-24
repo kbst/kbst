@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -39,10 +38,6 @@ func (r Repo) Init(starter string, release string, gitRef string, path string) (
 	filenames, err := util.Unzip(archive, path)
 	if err != nil {
 		return err
-	}
-
-	for _, name := range filenames {
-		log.Println(name)
 	}
 
 	// initialize git repository
