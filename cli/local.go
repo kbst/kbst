@@ -30,9 +30,16 @@ func (l *Local) Apply(path string, skipWatch bool) (err error) {
 	}
 
 	// start watching for repository changes
-	l.Watcher.Start(path)
+	run := l.Watcher.Start(path)
 
-	return
+	for {
+		log.Println("#### Watching for changes")
+		<-run
+		err = l.Runner.Run()
+		if err != nil {
+			return errors.New(fmt.Sprintf("updating local environment error: %s", err))
+		}
+	}
 }
 
 func (l *Local) Destroy() (err error) {
@@ -51,7 +58,7 @@ type TerraformContainer interface {
 type LocalTerraformContainer struct {
 	destroy bool
 	hash    string
-	module  tfconfig.Module
+	module  *tfconfig.Module
 	path    string
 }
 
@@ -70,12 +77,12 @@ func NewLocalTerraformContainer(path string, destroy bool) (ltc LocalTerraformCo
 	if diags.HasErrors() {
 		return ltc, fmt.Errorf("error parsing terraform config: %s", err)
 	}
-	ltc.module = *module
+	ltc.module = module
 
 	return ltc, nil
 }
 
-func (ltc LocalTerraformContainer) Run() (err error) {
+func (ltc *LocalTerraformContainer) Run() (err error) {
 	buildCmd := ltc.buildCmd()
 	err = buildCmd.Run()
 	if err != nil {
@@ -91,12 +98,12 @@ func (ltc LocalTerraformContainer) Run() (err error) {
 	return
 }
 
-func (ltc LocalTerraformContainer) buildCmd() (buildCmd exec.Cmd) {
+func (ltc *LocalTerraformContainer) buildCmd() (buildCmd exec.Cmd) {
 	args := ltc.buildArgs()
 	return util.DockerBuildCommand(ltc.path, args)
 }
 
-func (ltc LocalTerraformContainer) runCmd() (runCmd exec.Cmd) {
+func (ltc *LocalTerraformContainer) runCmd() (runCmd exec.Cmd) {
 	// run terraform apply/destroy script inside container
 	runArgs := ltc.runArgs(ltc.module.ModuleCalls)
 
@@ -105,11 +112,11 @@ func (ltc LocalTerraformContainer) runCmd() (runCmd exec.Cmd) {
 	return runCmd
 }
 
-func (ltc LocalTerraformContainer) imageTag() (tag string) {
+func (ltc *LocalTerraformContainer) imageTag() (tag string) {
 	return util.DockerImageTag(ltc.hash, "loc")
 }
 
-func (ltc LocalTerraformContainer) rewriteModules(moduleCalls map[string]*tfconfig.ModuleCall) []string {
+func (ltc *LocalTerraformContainer) rewriteModules(moduleCalls map[string]*tfconfig.ModuleCall) []string {
 	sedArgs := []string{}
 	for _, value := range moduleCalls {
 		// prepare original and replacement sources
@@ -128,7 +135,7 @@ func (ltc LocalTerraformContainer) rewriteModules(moduleCalls map[string]*tfconf
 	return sedArgs
 }
 
-func (ltc LocalTerraformContainer) renderApplySh(sedArgs []string, destroy bool) string {
+func (ltc *LocalTerraformContainer) renderApplySh(sedArgs []string, destroy bool) string {
 	tfCommand := "apply"
 	if destroy {
 		tfCommand = "destroy"
@@ -155,7 +162,7 @@ func (ltc LocalTerraformContainer) renderApplySh(sedArgs []string, destroy bool)
 	return sh
 }
 
-func (ltc LocalTerraformContainer) buildArgs() (buildArgs []string) {
+func (ltc *LocalTerraformContainer) buildArgs() (buildArgs []string) {
 	// get current user id to set chown during docker build
 	u, err := user.Current()
 	if err != nil {
@@ -175,7 +182,7 @@ func (ltc LocalTerraformContainer) buildArgs() (buildArgs []string) {
 	return buildArgs
 }
 
-func (ltc LocalTerraformContainer) runArgs(moduleCalls map[string]*tfconfig.ModuleCall) (runArgs []string) {
+func (ltc *LocalTerraformContainer) runArgs(moduleCalls map[string]*tfconfig.ModuleCall) (runArgs []string) {
 	// prepare list of all module sources that need to be rewritten
 	sedArgs := ltc.rewriteModules(moduleCalls)
 

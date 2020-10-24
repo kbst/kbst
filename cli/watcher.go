@@ -31,25 +31,17 @@ func (l *lastEvent) Get() time.Time {
 }
 
 type Watcher interface {
-	Start(path string)
+	Start(path string) (run chan time.Time)
 }
 
 type RepoWatcher struct {
-	tc TerraformContainer
+	r  chan time.Time
 	le *lastEvent
 	al *applyLock
 	w  *fsnotify.Watcher
 }
 
-func NewRepoWatcher(tc TerraformContainer) (rw RepoWatcher) {
-	rw.tc = tc
-	rw.le = &lastEvent{}
-	rw.al = &applyLock{}
-
-	return rw
-}
-
-func (rw RepoWatcher) Start(path string) {
+func (rw *RepoWatcher) Start(path string) (run chan time.Time) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatalf("watching filesystem failed: %s", err)
@@ -57,8 +49,9 @@ func (rw RepoWatcher) Start(path string) {
 	defer watcher.Close()
 	rw.w = watcher
 
-	done := make(chan bool)
-	go rw.handleEvent(done)
+	rw.r = run
+
+	go rw.handleEvent()
 
 	watchTargets := []string{
 		".",
@@ -75,36 +68,31 @@ func (rw RepoWatcher) Start(path string) {
 		}
 	}
 
-	<-done
-	return
+	return rw.r
 }
 
-func (rw RepoWatcher) handleEvent(done chan bool) {
+func (rw *RepoWatcher) handleEvent() {
 	for {
 		select {
-		case <-done:
-			return
-		default:
-			select {
-			case _, ok := <-rw.w.Events:
-				if !ok {
-					return
-				}
-
-				ts := time.Now()
-				rw.le.Set(ts)
-				go rw.queueRun(ts)
-			case err, ok := <-rw.w.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
+		case e, ok := <-rw.w.Events:
+			if !ok {
+				return
 			}
+
+			ts := time.Now()
+			rw.le.Set(ts)
+			log.Println(ts, e)
+			go rw.queueRun(ts)
+		case err, ok := <-rw.w.Errors:
+			if !ok {
+				return
+			}
+			log.Println("error:", err)
 		}
 	}
 }
 
-func (rw RepoWatcher) queueRun(ts time.Time) {
+func (rw *RepoWatcher) queueRun(ts time.Time) {
 	// postpone run slightly
 	time.Sleep(200 * time.Millisecond)
 
@@ -119,10 +107,6 @@ func (rw RepoWatcher) queueRun(ts time.Time) {
 	rw.al.mux.Lock()
 	defer rw.al.mux.Unlock()
 
-	err := rw.tc.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("#### Watching for changes")
+	rw.r <- ts
+	return
 }

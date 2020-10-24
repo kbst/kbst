@@ -1,5 +1,5 @@
 test:
-	go test ./...
+	go test --race ./...
 
 build: test
 	go build -o kbst .

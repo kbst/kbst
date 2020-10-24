@@ -39,10 +39,10 @@ func (mtc *MockTerraformContainer) Run() (err error) {
 }
 
 func TestLocalApply(t *testing.T) {
-	mtc := MockTerraformContainer{}
-	rw := NewRepoWatcher(&mtc)
+	mtc := &MockTerraformContainer{}
+	rw := &RepoWatcher{}
 
-	local := Local{Runner: &mtc, Watcher: rw}
+	local := Local{Runner: mtc, Watcher: rw}
 	p := filepath.Join(fixturesPath, "multi-cloud")
 
 	// start a watch
@@ -60,7 +60,7 @@ func TestLocalApply(t *testing.T) {
 		t.Error(err)
 	}
 
-	assert.Equal(t, 2, mtc.runCount, nil)
+	assert.Eventually(t, func() bool { return mtc.runCount == 2 }, 500*time.Millisecond, 50*time.Millisecond, "mtc.runCount was expected to be 2 but was not")
 }
 
 func TestLocalApplyProvisionError(t *testing.T) {
