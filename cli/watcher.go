@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"log"
 	"path/filepath"
 	"sync"
@@ -31,34 +32,35 @@ func (l *lastEvent) Get() time.Time {
 }
 
 type Watcher interface {
-	Start(path string)
+	Start(path string) (chan fsnotify.Event, error)
+	Stop()
 }
 
-type RepoWatcher struct {
-	tc TerraformContainer
+type repoWatcher struct {
+	e  chan fsnotify.Event
 	le *lastEvent
 	al *applyLock
 	w  *fsnotify.Watcher
 }
 
-func NewRepoWatcher(tc TerraformContainer) (rw RepoWatcher) {
-	rw.tc = tc
-	rw.le = &lastEvent{}
-	rw.al = &applyLock{}
+func NewRepoWatcher() *repoWatcher {
+	rw := repoWatcher{
+		e:  make(chan fsnotify.Event),
+		le: &lastEvent{},
+		al: &applyLock{},
+	}
 
-	return rw
+	return &rw
 }
 
-func (rw RepoWatcher) Start(path string) {
+func (rw *repoWatcher) Start(path string) (chan fsnotify.Event, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatalf("watching filesystem failed: %s", err)
+		return rw.e, fmt.Errorf("watching filesystem failed: %s", err)
 	}
-	defer watcher.Close()
 	rw.w = watcher
 
-	done := make(chan bool)
-	go rw.handleEvent(done)
+	go rw.handleEvent()
 
 	watchTargets := []string{
 		".",
@@ -71,40 +73,38 @@ func (rw RepoWatcher) Start(path string) {
 		fullPath := filepath.Join(path, t)
 		err = rw.w.Add(fullPath)
 		if err != nil {
-			log.Fatalf("watching '%s' failed: %s", fullPath, err)
+			return rw.e, fmt.Errorf("watching '%s' failed: %s", fullPath, err)
 		}
 	}
 
-	<-done
-	return
+	return rw.e, nil
 }
 
-func (rw RepoWatcher) handleEvent(done chan bool) {
+func (rw *repoWatcher) Stop() {
+	rw.w.Close()
+}
+
+func (rw *repoWatcher) handleEvent() {
 	for {
 		select {
-		case <-done:
-			return
-		default:
-			select {
-			case _, ok := <-rw.w.Events:
-				if !ok {
-					return
-				}
+		case e, ok := <-rw.w.Events:
+			if !ok {
+				return
+			}
 
-				ts := time.Now()
-				rw.le.Set(ts)
-				go rw.queueRun(ts)
-			case err, ok := <-rw.w.Errors:
-				if !ok {
-					return
-				}
-				log.Println("error:", err)
+			ts := time.Now()
+			rw.le.Set(ts)
+			go rw.queueRun(ts, e)
+		case err, ok := <-rw.w.Errors:
+			if !ok {
+				log.Printf("error watching for changes: %s", err)
+				return
 			}
 		}
 	}
 }
 
-func (rw RepoWatcher) queueRun(ts time.Time) {
+func (rw *repoWatcher) queueRun(ts time.Time, e fsnotify.Event) {
 	// postpone run slightly
 	time.Sleep(200 * time.Millisecond)
 
@@ -119,10 +119,5 @@ func (rw RepoWatcher) queueRun(ts time.Time) {
 	rw.al.mux.Lock()
 	defer rw.al.mux.Unlock()
 
-	err := rw.tc.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("#### Watching for changes")
+	rw.e <- e
 }
