@@ -41,9 +41,9 @@ var localApplyCmd = &cobra.Command{
 			log.Fatalln(err)
 		}
 
-		rw := cli.NewRepoWatcher(tc)
+		rw := cli.NewRepoWatcher()
 
-		local := cli.Local{Runner: tc, Watcher: &rw}
+		local := cli.Local{Runner: tc, Watcher: rw}
 		err = local.Apply(path, skipWatch)
 		if err != nil {
 			log.Fatalln(err)
