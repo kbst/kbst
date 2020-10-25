@@ -10,12 +10,13 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/kbst/kbst/pkg/watcher"
 	"github.com/kbst/kbst/util"
 )
 
 type Local struct {
 	Runner  TerraformContainer
-	Watcher Watcher
+	Watcher watcher.Watcher
 }
 
 func (l *Local) Apply(path string, skipWatch bool) (err error) {

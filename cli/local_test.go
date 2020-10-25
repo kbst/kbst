@@ -10,18 +10,10 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	"github.com/kbst/kbst/pkg/watcher"
 	"github.com/kbst/kbst/util"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestLastEvent(t *testing.T) {
-	le := lastEvent{}
-	ts := time.Now()
-	le.Set(ts)
-	rts := le.Get()
-
-	assert.Equal(t, ts, rts, nil)
-}
 
 type MockTerraformContainer struct {
 	runCount    int
@@ -45,7 +37,7 @@ func (mtc *MockTerraformContainer) Count() {
 
 func TestLocalApply(t *testing.T) {
 	mtc := &MockTerraformContainer{}
-	rw := NewRepoWatcher()
+	rw := watcher.NewRepoWatcher()
 
 	local := Local{Runner: mtc, Watcher: rw}
 	p := filepath.Join(fixturesPath, "multi-cloud")

@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/kbst/kbst/cli"
+	"github.com/kbst/kbst/pkg/watcher"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,7 @@ var localApplyCmd = &cobra.Command{
 			log.Fatalln(err)
 		}
 
-		rw := cli.NewRepoWatcher()
+		rw := watcher.NewRepoWatcher()
 
 		local := cli.Local{Runner: tc, Watcher: rw}
 		err = local.Apply(path, skipWatch)
