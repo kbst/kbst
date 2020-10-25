@@ -1,13 +1,27 @@
-package cli
+package watcher
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/fsnotify.v1"
 )
+
+var cwd, _ = os.Getwd()
+var fixturesPath = path.Join(cwd, "../", "../", "test_fixtures")
+
+func TestLastEvent(t *testing.T) {
+	le := lastEvent{}
+	ts := time.Now()
+	le.Set(ts)
+	rts := le.Get()
+
+	assert.Equal(t, ts, rts, nil)
+}
 
 func TestNewRepoWatcher(t *testing.T) {
 	rw := NewRepoWatcher()

@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kbst/kbst/util"
+	"github.com/kbst/kbst/pkg/util"
 )
 
 type Manifest struct {

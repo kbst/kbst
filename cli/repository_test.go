@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kbst/kbst/util"
+	"github.com/kbst/kbst/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
 

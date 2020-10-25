@@ -1,4 +1,4 @@
-package util
+package runner
 
 import (
 	"crypto/sha512"
@@ -8,7 +8,7 @@ import (
 
 // Hash of absolute path used to ensure unique
 // docker image tags and volumes per repository
-func PathHash(path string) (hash string, err error) {
+func pathHash(path string) (hash string, err error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return hash, err

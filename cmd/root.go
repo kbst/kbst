@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kbst/kbst/util"
+	"github.com/kbst/kbst/pkg/util"
 	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )

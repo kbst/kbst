@@ -4,11 +4,10 @@ go 1.13
 
 replace github.com/kbst/kbst/cli => ./cli
 
-replace github.com/kbst/kbst/util => ./util
+replace github.com/kbst/kbst/pkg => ./pkg
 
 require (
 	github.com/adrg/xdg v0.2.1
-	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-git/go-git/v5 v5.1.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79

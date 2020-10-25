@@ -19,6 +19,8 @@ import (
 	"log"
 
 	"github.com/kbst/kbst/cli"
+	"github.com/kbst/kbst/pkg/runner"
+	"github.com/kbst/kbst/pkg/watcher"
 	"github.com/spf13/cobra"
 )
 
@@ -36,12 +38,12 @@ var localApplyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Watch and apply changes to the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		tc, err := cli.NewLocalTerraformContainer(path, false)
+		tc, err := runner.NewLocalTerraformContainer(path)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		rw := cli.NewRepoWatcher()
+		rw := watcher.NewRepoWatcher()
 
 		local := cli.Local{Runner: tc, Watcher: rw}
 		err = local.Apply(path, skipWatch)
@@ -54,7 +56,7 @@ var localDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		tc, err := cli.NewLocalTerraformContainer(path, false)
+		tc, err := runner.NewLocalTerraformContainer(path)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -78,7 +80,7 @@ func init() {
 	rootCmd.AddCommand(devCmd)
 
 	devCmd.AddCommand(localApplyCmd)
-	localApplyCmd.Flags().BoolVar(&skipWatch, "skip-watch", false, "watch for changes")
+	localApplyCmd.Flags().BoolVar(&skipWatch, "skip-watch", false, "skip watching for changes")
 
 	devCmd.AddCommand(localDestroyCmd)
 

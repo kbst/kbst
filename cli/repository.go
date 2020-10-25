@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/kbst/kbst/util"
+	"github.com/kbst/kbst/pkg/util"
 )
 
 type Repo struct {
