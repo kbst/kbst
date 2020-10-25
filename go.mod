@@ -4,8 +4,6 @@ go 1.13
 
 replace github.com/kbst/kbst/cli => ./cli
 
-replace github.com/kbst/kbst/util => ./util
-
 replace github.com/kbst/kbst/pkg => ./pkg
 
 require (
