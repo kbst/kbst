@@ -10,6 +10,8 @@ import (
 	"gopkg.in/fsnotify.v1"
 )
 
+var _ Watcher = &repoWatcher{}
+
 type applyLock struct {
 	mux sync.Mutex
 }
