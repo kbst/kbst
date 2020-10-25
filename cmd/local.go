@@ -19,6 +19,7 @@ import (
 	"log"
 
 	"github.com/kbst/kbst/cli"
+	"github.com/kbst/kbst/pkg/runner"
 	"github.com/kbst/kbst/pkg/watcher"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ var localApplyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Watch and apply changes to the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		tc, err := cli.NewLocalTerraformContainer(path, false)
+		tc, err := runner.NewLocalTerraformContainer(path, false)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -55,7 +56,7 @@ var localDestroyCmd = &cobra.Command{
 	Use:   "destroy",
 	Short: "Destroy the localhost development environment",
 	Run: func(cmd *cobra.Command, args []string) {
-		tc, err := cli.NewLocalTerraformContainer(path, false)
+		tc, err := runner.NewLocalTerraformContainer(path, false)
 		if err != nil {
 			log.Fatalln(err)
 		}

@@ -1,4 +1,4 @@
-package util
+package runner
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"os/exec"
 )
 
-func DockerImageTag(hash string, suffix string) string {
+func dockerImageTag(hash string, suffix string) string {
 	tag := fmt.Sprintf("kbst:%s", hash)
 	if suffix != "" {
 		tag = fmt.Sprintf("%s-%s", tag, suffix)
@@ -15,7 +15,7 @@ func DockerImageTag(hash string, suffix string) string {
 	return tag
 }
 
-func DockerBuildCommand(path string, args []string) (cmd exec.Cmd) {
+func dockerBuildCommand(path string, args []string) (cmd exec.Cmd) {
 	buildArgs := append([]string{"build"}, args...)
 	cmd = *exec.Command("docker", buildArgs...)
 	cmd.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
@@ -26,7 +26,7 @@ func DockerBuildCommand(path string, args []string) (cmd exec.Cmd) {
 	return cmd
 }
 
-func DockerRunCommand(args []string) (cmd exec.Cmd) {
+func dockerRunCommand(args []string) (cmd exec.Cmd) {
 	runArgs := append([]string{"run"}, args...)
 	cmd = *exec.Command("docker", runArgs...)
 	cmd.Env = os.Environ()

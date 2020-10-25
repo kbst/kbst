@@ -6,7 +6,7 @@ replace github.com/kbst/kbst/cli => ./cli
 
 replace github.com/kbst/kbst/util => ./util
 
-replace github.com/kbst/kbst/pkg/watcher => ./pkg/watcher
+replace github.com/kbst/kbst/pkg => ./pkg
 
 require (
 	github.com/adrg/xdg v0.2.1

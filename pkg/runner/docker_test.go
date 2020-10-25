@@ -1,4 +1,4 @@
-package util
+package runner
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 func TestDockerImageTag(t *testing.T) {
 	h := "testhash123"
-	dt := DockerImageTag(h, "")
+	dt := dockerImageTag(h, "")
 
 	assert.Equal(t, fmt.Sprintf("kbst:%s", h), dt, nil)
 }
@@ -18,7 +18,7 @@ func TestDockerImageTag(t *testing.T) {
 func TestDockerImageTagSuffix(t *testing.T) {
 	h := "testhash123"
 	s := "test"
-	dt := DockerImageTag(h, s)
+	dt := dockerImageTag(h, s)
 
 	assert.Equal(t, fmt.Sprintf("kbst:%s-%s", h, s), dt, nil)
 }
@@ -29,7 +29,7 @@ func TestDockerBuildCommand(t *testing.T) {
 	expArgs := append([]string{"docker", "build"}, args...)
 	expEnv := append(os.Environ(), "DOCKER_BUILDKIT=1")
 
-	cmd := DockerBuildCommand(path, args)
+	cmd := dockerBuildCommand(path, args)
 
 	assert.Equal(t, expArgs, cmd.Args, nil)
 	assert.ElementsMatch(t, cmd.Env, expEnv, nil)
@@ -43,7 +43,7 @@ func TestDockerRunCommand(t *testing.T) {
 	expArgs := append([]string{"docker", "run"}, args...)
 	expEnv := append(os.Environ())
 
-	cmd := DockerRunCommand(args)
+	cmd := dockerRunCommand(args)
 
 	assert.Equal(t, expArgs, cmd.Args, nil)
 	assert.ElementsMatch(t, cmd.Env, expEnv, nil)
