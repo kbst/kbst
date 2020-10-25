@@ -12,21 +12,21 @@ import (
 
 func TestNewLocalTerraformContainer(t *testing.T) {
 	p := filepath.Join(fixturesPath, "multi-cloud")
-	_, err := NewLocalTerraformContainer(p, false)
+	_, err := NewLocalTerraformContainer(p)
 
 	assert.Equal(t, nil, err, nil)
 }
 
 func TestNewLocalTerraformContainerNoModule(t *testing.T) {
 	p := filepath.Join(fixturesPath, "this-is-not-the-fixture-you-are-looking-for")
-	_, err := NewLocalTerraformContainer(p, false)
+	_, err := NewLocalTerraformContainer(p)
 
 	assert.Error(t, err, nil)
 }
 
 func TestBuldAndRunImageTagsMatch(t *testing.T) {
 	p := filepath.Join(fixturesPath, "multi-cloud")
-	ltc, _ := NewLocalTerraformContainer(p, false)
+	ltc, _ := NewLocalTerraformContainer(p)
 	h, _ := pathHash(p)
 	expTag := fmt.Sprintf("kbst:%s-loc", h)
 
@@ -94,7 +94,7 @@ func TestGetApplyShDestroy(t *testing.T) {
 func TestBuildArgs(t *testing.T) {
 	u, _ := user.Current()
 
-	ltc, _ := NewLocalTerraformContainer("testpath", false)
+	ltc, _ := NewLocalTerraformContainer("testpath")
 	ba := ltc.buildArgs()
 
 	expFile := []string{"--file", "Dockerfile.loc"}
@@ -109,7 +109,7 @@ func TestBuildArgs(t *testing.T) {
 func TestRunArgs(t *testing.T) {
 	p := filepath.Join(fixturesPath, "multi-cloud")
 	h, _ := pathHash(p)
-	ltc, _ := NewLocalTerraformContainer(p, false)
+	ltc, _ := NewLocalTerraformContainer(p)
 	ra := ltc.runArgs(getModuleCalls())
 
 	expStateVolume := []string{"--volume", fmt.Sprintf("kbst-loc-terraform-state-%s:/infra/terraform.tfstate.d", h)}

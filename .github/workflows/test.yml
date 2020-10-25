@@ -54,9 +54,13 @@ jobs:
 
       - run: kbst --path kubestack-starter-gke manifest install prometheus clusterwide
 
-      - run: |
+      - name: kbst local apply
+        run: |
           cd kubestack-starter-gke
           kbst local apply --skip-watch
+      
+      - name: kbst local destroy
+        run: kbst --path kubestack-starter-gke local destroy
 
   darwin:
     runs-on: macos-latest

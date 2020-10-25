@@ -12,12 +12,15 @@ import (
 )
 
 type MockTerraformContainer struct {
+	destroy     bool
 	runCount    int
 	runCountMux sync.Mutex
 	throw       bool
 }
 
-func (mtc *MockTerraformContainer) Run() (err error) {
+func (mtc *MockTerraformContainer) Run(destroy bool) (err error) {
+	mtc.destroy = destroy
+
 	mtc.runCount++
 
 	if mtc.throw {
@@ -41,6 +44,7 @@ func TestLocalApply(t *testing.T) {
 	// start a watch
 	go local.Apply(p, false)
 
+	assert.Equal(t, false, mtc.destroy, nil)
 	assert.Eventually(t, func() bool { return mtc.runCount == 1 }, 500*time.Millisecond, 50*time.Millisecond, "expected mtc.runCount == 1")
 }
 
@@ -51,6 +55,7 @@ func TestLocalApplyProvisionError(t *testing.T) {
 	p := filepath.Join(fixturesPath, "multi-cloud")
 	err := local.Apply(p, false)
 
+	assert.Equal(t, false, mtc.destroy, nil)
 	assert.Error(t, err, nil)
 }
 
@@ -61,6 +66,7 @@ func TestLocalApplySkipWatch(t *testing.T) {
 	p := filepath.Join(fixturesPath, "multi-cloud")
 	err := local.Apply(p, true)
 
+	assert.Equal(t, false, mtc.destroy, nil)
 	assert.Equal(t, nil, err, nil)
 	assert.Equal(t, 1, mtc.runCount, nil)
 }
@@ -71,6 +77,7 @@ func TestLocalDestroy(t *testing.T) {
 	local := Local{Runner: mtc}
 	err := local.Destroy()
 
+	assert.Equal(t, true, mtc.destroy, nil)
 	assert.Equal(t, nil, err, nil)
 }
 
@@ -80,5 +87,6 @@ func TestLocalDestroyError(t *testing.T) {
 	local := Local{Runner: mtc}
 	err := local.Destroy()
 
+	assert.Equal(t, true, mtc.destroy, nil)
 	assert.Error(t, err, nil)
 }

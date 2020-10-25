@@ -14,7 +14,7 @@ import (
 var _ TerraformContainer = &localTerraformContainer{}
 
 type TerraformContainer interface {
-	Run() (err error)
+	Run(destroy bool) (err error)
 }
 
 type localTerraformContainer struct {
@@ -24,10 +24,10 @@ type localTerraformContainer struct {
 	path    string
 }
 
-func NewLocalTerraformContainer(path string, destroy bool) (*localTerraformContainer, error) {
+func NewLocalTerraformContainer(path string) (*localTerraformContainer, error) {
 	ltc := localTerraformContainer{
 		path:    path,
-		destroy: destroy,
+		destroy: false,
 	}
 
 	hash, err := pathHash(path)
@@ -46,7 +46,8 @@ func NewLocalTerraformContainer(path string, destroy bool) (*localTerraformConta
 	return &ltc, nil
 }
 
-func (ltc *localTerraformContainer) Run() (err error) {
+func (ltc *localTerraformContainer) Run(destroy bool) (err error) {
+	ltc.destroy = destroy
 	buildCmd := ltc.buildCmd()
 	err = buildCmd.Run()
 	if err != nil {
