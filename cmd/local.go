@@ -80,7 +80,7 @@ func init() {
 	rootCmd.AddCommand(devCmd)
 
 	devCmd.AddCommand(localApplyCmd)
-	localApplyCmd.Flags().BoolVar(&skipWatch, "skip-watch", false, "watch for changes")
+	localApplyCmd.Flags().BoolVar(&skipWatch, "skip-watch", false, "skip watching for changes")
 
 	devCmd.AddCommand(localDestroyCmd)
 
