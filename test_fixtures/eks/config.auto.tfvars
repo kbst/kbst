@@ -27,10 +27,10 @@ clusters = {
       cluster_availability_zones = ""
     }
 
-    # ops environment, inherrits from apps
+    # ops environment, inherits from apps
     ops = {}
 
-    # loc environment, inherrits from apps
+    # loc environment, inherits from apps
     loc = {}
   }
 }
