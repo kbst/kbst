@@ -17,7 +17,7 @@ type Local struct {
 func (l *Local) Apply(path string, skipWatch bool) (err error) {
 	// provision the development environment
 	err = l.Runner.Run(false)
-	if err != nil {
+	if err != nil && skipWatch {
 		return errors.New(fmt.Sprintf("provisioning local environment error: %s", err))
 	}
 
@@ -35,10 +35,7 @@ func (l *Local) Apply(path string, skipWatch bool) (err error) {
 	for {
 		log.Println("#### Watching for changes")
 		<-ev
-		err = l.Runner.Run(false)
-		if err != nil {
-			return errors.New(fmt.Sprintf("updating local environment error: %s", err))
-		}
+		l.Runner.Run(false)
 	}
 }
 
