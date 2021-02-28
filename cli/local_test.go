@@ -53,7 +53,7 @@ func TestLocalApplyProvisionError(t *testing.T) {
 
 	local := Local{Runner: mtc}
 	p := filepath.Join(fixturesPath, "multi-cloud")
-	err := local.Apply(p, false)
+	err := local.Apply(p, true)
 
 	assert.Equal(t, false, mtc.destroy, nil)
 	assert.Error(t, err, nil)
