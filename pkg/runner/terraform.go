@@ -143,6 +143,7 @@ func (ltc *localTerraformContainer) buildArgs() (buildArgs []string) {
 		"--build-arg", fmt.Sprintf("UID=%s", u.Uid),
 		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
 		"."}
+    log.Println(buildArgs)
 
 	return buildArgs
 }
@@ -160,7 +161,7 @@ func (ltc *localTerraformContainer) runArgs(moduleCalls map[string]*tfconfig.Mod
 		ltc.hash,
 		"/infra/terraform.tfstate.d",
 	)
-	socketVolume := "/var/run/docker.sock:/var/run/docker.sock"
+	socketVolume := "/var/run/docker.sock.raw:/var/run/docker.sock"
 
 	runArgs = []string{
 		"--rm",
@@ -170,6 +171,8 @@ func (ltc *localTerraformContainer) runArgs(moduleCalls map[string]*tfconfig.Mod
 		"--net", "host",
 		ltc.imageTag(),
 		"sh", "-c", applySh}
+
+    log.Println(runArgs)
 
 	return runArgs
 }
