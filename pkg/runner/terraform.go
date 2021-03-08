@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"os/exec"
@@ -18,16 +20,21 @@ type TerraformContainer interface {
 }
 
 type localTerraformContainer struct {
-	destroy bool
-	hash    string
-	module  tfconfig.Module
-	path    string
+	destroy      bool
+	hash         string
+	module       tfconfig.Module
+	path         string
+	preflight    bool
+	stateVolume  string
+	socketVolume string
 }
 
 func NewLocalTerraformContainer(path string) (*localTerraformContainer, error) {
 	ltc := localTerraformContainer{
-		path:    path,
-		destroy: false,
+		path:         path,
+		destroy:      false,
+		preflight:    false,
+		socketVolume: "/var/run/docker.sock:/var/run/docker.sock",
 	}
 
 	hash, err := pathHash(path)
@@ -35,6 +42,12 @@ func NewLocalTerraformContainer(path string) (*localTerraformContainer, error) {
 		return &ltc, fmt.Errorf("path error: %s", err)
 	}
 	ltc.hash = hash
+
+	ltc.stateVolume = fmt.Sprintf(
+		"kbst-loc-terraform-state-%s:%s",
+		ltc.hash,
+		"/infra/terraform.tfstate.d",
+	)
 
 	// parse the Terraform config
 	module, diags := tfconfig.LoadModule(ltc.path)
@@ -54,8 +67,30 @@ func (ltc *localTerraformContainer) Run(destroy bool) (err error) {
 		return fmt.Errorf("docker build error: %s", err)
 	}
 
-	runCmd := ltc.runCmd()
-	err = runCmd.Run()
+	if ltc.preflight == false {
+		b := bytes.NewBuffer(nil)
+		w := bufio.NewWriter(b)
+		defer w.Flush()
+
+		preflightCmd := ltc.preflightCmd()
+		preflightCmd.Stderr = w
+		preflightCmd.Stdout = w
+		err = preflightCmd.Run()
+		if err != nil {
+			// temp workaround for upstream issue on MacOS
+			// https://github.com/docker/for-mac/issues/4755
+			// if the first preflight fails, we try the raw socket
+			ltc.socketVolume = "/var/run/docker.sock.raw:/var/run/docker.sock"
+			err = preflightCmd.Run()
+			if err != nil {
+				log.Fatalf("docker preflight error:\r\n%s", b)
+			}
+		}
+		ltc.preflight = true
+	}
+
+	applyCmd := ltc.applyCmd()
+	err = applyCmd.Run()
 	if err != nil {
 		return fmt.Errorf("docker run error: %s", err)
 	}
@@ -68,13 +103,18 @@ func (ltc *localTerraformContainer) buildCmd() (buildCmd exec.Cmd) {
 	return dockerBuildCommand(ltc.path, args)
 }
 
-func (ltc *localTerraformContainer) runCmd() (runCmd exec.Cmd) {
+func (ltc *localTerraformContainer) preflightCmd() (preflightCmd exec.Cmd) {
+	preflightArgs := ltc.preflightArgs()
+	return dockerRunCommand(preflightArgs)
+}
+
+func (ltc *localTerraformContainer) applyCmd() (applyCmd exec.Cmd) {
 	// run terraform apply/destroy script inside container
-	runArgs := ltc.runArgs(ltc.module.ModuleCalls)
+	applyArgs := ltc.applyArgs(ltc.module.ModuleCalls)
 
-	runCmd = dockerRunCommand(runArgs)
+	applyCmd = dockerRunCommand(applyArgs)
 
-	return runCmd
+	return applyCmd
 }
 
 func (ltc *localTerraformContainer) imageTag() (tag string) {
@@ -134,12 +174,10 @@ func (ltc *localTerraformContainer) buildArgs() (buildArgs []string) {
 		log.Fatalln(err)
 	}
 
-	tag := ltc.imageTag()
-
 	// build the docker image for this apply run
 	buildArgs = []string{
 		"--file", "Dockerfile.loc",
-		"--tag", tag,
+		"--tag", ltc.imageTag(),
 		"--build-arg", fmt.Sprintf("UID=%s", u.Uid),
 		"--build-arg", fmt.Sprintf("GID=%s", u.Gid),
 		"."}
@@ -147,29 +185,33 @@ func (ltc *localTerraformContainer) buildArgs() (buildArgs []string) {
 	return buildArgs
 }
 
-func (ltc *localTerraformContainer) runArgs(moduleCalls map[string]*tfconfig.ModuleCall) (runArgs []string) {
+func (ltc *localTerraformContainer) defaultRunArgs() (runArgs []string) {
+	runArgs = []string{
+		"--rm",
+		"--privileged",
+		"--volume", ltc.stateVolume,
+		"--volume", ltc.socketVolume,
+		"--net", "host",
+		ltc.imageTag()}
+
+	return runArgs
+}
+
+func (ltc *localTerraformContainer) preflightArgs() (preflightArgs []string) {
+	// run docker info as a preflight check
+	preflightArgs = append(ltc.defaultRunArgs(), []string{"docker", "info"}...)
+
+	return preflightArgs
+}
+
+func (ltc *localTerraformContainer) applyArgs(moduleCalls map[string]*tfconfig.ModuleCall) (applyArgs []string) {
 	// prepare list of all module sources that need to be rewritten
 	sedArgs := ltc.rewriteModules(moduleCalls)
 
 	// render the script to run
 	applySh := ltc.renderApplySh(sedArgs, ltc.destroy)
 
-	// prepare volumes
-	stateVolume := fmt.Sprintf(
-		"kbst-loc-terraform-state-%s:%s",
-		ltc.hash,
-		"/infra/terraform.tfstate.d",
-	)
-	socketVolume := "/var/run/docker.sock:/var/run/docker.sock"
+	applyArgs = append(ltc.defaultRunArgs(), []string{"sh", "-c", applySh}...)
 
-	runArgs = []string{
-		"--rm",
-		"--privileged",
-		"--volume", stateVolume,
-		"--volume", socketVolume,
-		"--net", "host",
-		ltc.imageTag(),
-		"sh", "-c", applySh}
-
-	return runArgs
+	return applyArgs
 }
