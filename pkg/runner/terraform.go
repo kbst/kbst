@@ -63,7 +63,6 @@ func (ltc *localTerraformContainer) Run(destroy bool) (err error) {
 	ltc.destroy = destroy
 	buildCmd := ltc.buildCmd()
 	err = buildCmd.Run()
-	fmt.Errorf("234324docker run error: %s", err)
 	if err != nil {
 		return fmt.Errorf("docker build error: %s", err)
 	}
