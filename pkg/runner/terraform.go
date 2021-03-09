@@ -81,6 +81,9 @@ func (ltc *localTerraformContainer) Run(destroy bool) (err error) {
 			// https://github.com/docker/for-mac/issues/4755
 			// if the first preflight fails, we try the raw socket
 			ltc.socketVolume = "/var/run/docker.sock.raw:/var/run/docker.sock"
+			preflightCmd := ltc.preflightCmd()
+			preflightCmd.Stderr = w
+			preflightCmd.Stdout = w
 			err = preflightCmd.Run()
 			if err != nil {
 				log.Fatalf("docker preflight error:\r\n%s", b)
