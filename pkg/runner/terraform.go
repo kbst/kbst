@@ -63,6 +63,7 @@ func (ltc *localTerraformContainer) Run(destroy bool) (err error) {
 	ltc.destroy = destroy
 	buildCmd := ltc.buildCmd()
 	err = buildCmd.Run()
+	fmt.Errorf("234324docker run error: %s", err)
 	if err != nil {
 		return fmt.Errorf("docker build error: %s", err)
 	}
@@ -81,6 +82,7 @@ func (ltc *localTerraformContainer) Run(destroy bool) (err error) {
 			// https://github.com/docker/for-mac/issues/4755
 			// if the first preflight fails, we try the raw socket
 			ltc.socketVolume = "/var/run/docker.sock.raw:/var/run/docker.sock"
+			preflightCmd := ltc.preflightCmd()
 			err = preflightCmd.Run()
 			if err != nil {
 				log.Fatalf("docker preflight error:\r\n%s", b)
