@@ -31,10 +31,10 @@ func TestBuldAndRunImageTagsMatch(t *testing.T) {
 	expTag := fmt.Sprintf("kbst:%s-loc", h)
 
 	buildCmd := ltc.buildCmd()
-	runCmd := ltc.runCmd()
+	applyCmd := ltc.applyCmd()
 
 	assert.Contains(t, buildCmd.Args, expTag, nil)
-	assert.Contains(t, runCmd.Args, expTag, nil)
+	assert.Contains(t, applyCmd.Args, expTag, nil)
 }
 
 var entries = map[string]string{
@@ -106,11 +106,26 @@ func TestBuildArgs(t *testing.T) {
 	assert.Subset(t, ba, expBuildArg, nil)
 }
 
-func TestRunArgs(t *testing.T) {
+func TestPreflightArgs(t *testing.T) {
 	p := filepath.Join(fixturesPath, "multi-cloud")
 	h, _ := pathHash(p)
 	ltc, _ := NewLocalTerraformContainer(p)
-	ra := ltc.runArgs(getModuleCalls())
+	pa := ltc.preflightArgs()
+
+	expStateVolume := []string{"--volume", fmt.Sprintf("kbst-loc-terraform-state-%s:/infra/terraform.tfstate.d", h)}
+	expSocketVolume := []string{"--volume", "/var/run/docker.sock:/var/run/docker.sock"}
+	expImageTag := []string{fmt.Sprintf("kbst:%s-loc", h)}
+
+	assert.Subset(t, pa, expStateVolume, nil)
+	assert.Subset(t, pa, expSocketVolume, nil)
+	assert.Subset(t, pa, expImageTag, nil)
+}
+
+func TestApplyArgs(t *testing.T) {
+	p := filepath.Join(fixturesPath, "multi-cloud")
+	h, _ := pathHash(p)
+	ltc, _ := NewLocalTerraformContainer(p)
+	ra := ltc.applyArgs(getModuleCalls())
 
 	expStateVolume := []string{"--volume", fmt.Sprintf("kbst-loc-terraform-state-%s:/infra/terraform.tfstate.d", h)}
 	expSocketVolume := []string{"--volume", "/var/run/docker.sock:/var/run/docker.sock"}
