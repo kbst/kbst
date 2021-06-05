@@ -66,6 +66,7 @@ func (rw *repoWatcher) Start(path string) (chan fsnotify.Event, error) {
 
 	watchTargets := []string{
 		".",
+		"manifests",
 		"manifests/bases",
 		"manifests/overlays/apps",
 		"manifests/overlays/ops",
@@ -75,6 +76,9 @@ func (rw *repoWatcher) Start(path string) (chan fsnotify.Event, error) {
 		fullPath := filepath.Join(path, t)
 		err = rw.w.Add(fullPath)
 		if err != nil {
+			if err.Error() == "no such file or directory" {
+				continue
+			}
 			return rw.e, fmt.Errorf("watching '%s' failed: %s", fullPath, err)
 		}
 	}

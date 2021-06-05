@@ -127,13 +127,18 @@ func (ltc *localTerraformContainer) imageTag() (tag string) {
 func (ltc *localTerraformContainer) rewriteModules(moduleCalls map[string]*tfconfig.ModuleCall) []string {
 	sedArgs := []string{}
 	for _, value := range moduleCalls {
+		// only kubestack framework modules
+		if !strings.HasPrefix(value.Source, "github.com/kbst/terraform-kubestack") {
+			continue
+		}
+
 		// prepare original and replacement sources
 		// escape slashes
 		o := strings.Replace(value.Source, "/", "\\/", -1)
 		r := strings.Replace(value.Source, "/", "\\/", -1)
 
 		// replace cluster with cluster-local module
-		r = strings.Replace(r, "/cluster?", "/cluster-local?", 1)
+		r = strings.Replace(r, "/cluster", "/cluster-local", 1)
 
 		// concatenate and append the sed flag
 		arg := fmt.Sprintf("-e s#%s#%s#g", o, r)
