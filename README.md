@@ -99,6 +99,27 @@ make install
 ```
 
 
+## Using the kbst CLI
+
+`kbst` has four commands:
+* `help` - Help about any command
+* `local` - Start a localhost development environment
+* `manifest` - Add, update, and remove services from the [catalog](https://github.com/kbst/catalog)
+* `repository` - Create and change Kubestack repositories
+
+`kbst local` has two sub-commands:
+* `apply` - Watch and apply changes to the localhost development environment
+* `destroy` - Destroy the localhost development environment
+
+`kbst manifest` has three sub-commands:
+* `install` - Install and vendor a manifest from the catalog
+* `remove` - Remove a vendored manifest from all environments
+* `update` - Update vendored manifests from the catalog
+
+`kbst repository` only has a single sub-command:
+* `init` - Scaffold a new repository
+
+
 ## Getting Started with Kubestack
 
 For the easiest way to get started, [visit the official Kubestack quickstart](https://www.kubestack.com/infrastructure/documentation/quickstart). This tutorial will help you get started with the Kubestack GitOps framework. It is divided into three steps.
