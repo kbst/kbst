@@ -1,0 +1,43 @@
+{
+    "base_domain": "kubestack.example.com",
+    "environments": [
+        {
+            "is_configuration_base_key": false,
+            "name": "ops"
+        },
+        {
+            "is_configuration_base_key": true,
+            "name": "apps"
+        }
+    ],
+    "modules": [
+        {
+            "children": [
+                {
+                    "configuration": {
+                        "instance_type": "t3a.medium",
+                        "name": "default"
+                    },
+                    "name": null,
+                    "provider": "aws",
+                    "type": "node_pool"
+                },
+                {
+                    "configuration": {
+                        "variant": null
+                    },
+                    "name": "nginx",
+                    "provider": "kustomization",
+                    "type": "service"
+                }
+            ],
+            "configuration": {
+                "name_prefix": "kbst",
+                "region": "eu-west-1"
+            },
+            "name": null,
+            "provider": "aws",
+            "type": "cluster"
+        }
+    ]
+}

@@ -31,7 +31,7 @@ var manifestSkipEditKustomization bool
 // devCmd represents the dev command
 var manifestCmd = &cobra.Command{
 	Use:   "manifest",
-	Short: "Add, update and remove services from the catalog",
+	Short: "Add, update and remove cluster services",
 }
 
 var manifestInstallCmd = &cobra.Command{

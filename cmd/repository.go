@@ -56,6 +56,29 @@ var repositoryInitCmd = &cobra.Command{
 	},
 }
 
+var repositoryGenerateCmd = &cobra.Command{
+	Use:   "generate <json_path>",
+	Short: "Scaffold a new repository",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		json_path := args[0]
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		r := cli.Repo{
+			Catalog:    cj.Catalog,
+			Framework:  cj.Framework,
+			Downloader: util.CachedDownloader{},
+		}
+		err = r.Generate(json_path, path)
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(repositoryCmd)
 
@@ -64,4 +87,6 @@ func init() {
 	repositoryInitCmd.Flags().StringVarP(&repoRelease, "release", "r", "latest", "desired release version")
 	repositoryInitCmd.Flags().StringVar(&repoGitRef, "gitref", "", "git ref to download a dev artifact")
 	repositoryInitCmd.Flags().MarkHidden("gitref")
+
+	repositoryCmd.AddCommand(repositoryGenerateCmd)
 }
