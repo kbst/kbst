@@ -1,1 +1,1 @@
-base_domain = "{{.BaseDomain}}"
+base_domain = "{{base_domain}}"

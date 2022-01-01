@@ -2,33 +2,34 @@ package generator
 
 import (
 	_ "embed"
-	"text/template"
+
+	"github.com/flosch/pongo2/v4"
 )
 
 //go:embed templates/versions.tf
 var templateVersionsString string
-var templateVersions *template.Template = template.Must(template.New("templateVersions").Parse(templateVersionsString))
+var templateVersions *pongo2.Template = pongo2.Must(pongo2.FromString(templateVersionsString))
 
 //go:embed templates/variables.tf
 var templateVariablesString string
-var templateVariables *template.Template = template.Must(template.New("templateVariables").Parse(templateVariablesString))
+var templateVariables *pongo2.Template = pongo2.Must(pongo2.FromString(templateVariablesString))
 
 //go:embed templates/config.auto.tfvars
 var templateConfigAutoString string
-var templateConfigAuto *template.Template = template.Must(template.New("templateConfigAuto").Parse(templateConfigAutoString))
+var templateConfigAuto *pongo2.Template = pongo2.Must(pongo2.FromString(templateConfigAutoString))
 
 //go:embed templates/cluster.tf
 var templateClusterString string
-var templateCluster *template.Template = template.Must(template.New("templateCluster").Parse(templateClusterString))
+var templateCluster *pongo2.Template = pongo2.Must(pongo2.FromString(templateClusterString))
 
 //go:embed templates/cluster_providers.tf
 var templateClusterProvidersString string
-var templateClusterProviders *template.Template = template.Must(template.New("templateClusterProviders").Parse(templateClusterProvidersString))
+var templateClusterProviders *pongo2.Template = pongo2.Must(pongo2.FromString(templateClusterProvidersString))
 
 //go:embed templates/cluster_node_pool.tf
 var templateClusterNodePoolString string
-var templateClusterNodePool *template.Template = template.Must(template.New("templateClusterNodePool").Parse(templateClusterNodePoolString))
+var templateClusterNodePool *pongo2.Template = pongo2.Must(pongo2.FromString(templateClusterNodePoolString))
 
 //go:embed templates/cluster_service.tf
 var templateClusterServiceString string
-var templateClusterService *template.Template = template.Must(template.New("templateClusterService").Parse(templateClusterServiceString))
+var templateClusterService *pongo2.Template = pongo2.Must(pongo2.FromString(templateClusterServiceString))

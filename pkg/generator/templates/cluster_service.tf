@@ -1,10 +1,11 @@
-module "{{.moduleName}}" {
+module "{{ moduleName }}" {
   providers = {
-    kustomization = kustomization.{{.providerAlias}}
+    kustomization = kustomization.{{ providerAlias }}
   }
 
-  source  = "kbst.xyz/catalog/{{.serviceName}}/{{.provider}}"
-  version = "{{.version}}"
-  {{if ne .configuration_base_key "apps"}}configuration_base_key = "{{.configuration_base_key}}"{{end}}
-  configuration = {{.configuration}}
+  source  = "kbst.xyz/catalog/{{ serviceName }}/{{ provider }}"
+  version = "{{ version }}"
+
+  {% if configuration_base_key != "apps" %}configuration_base_key = "{{ configuration_base_key }}"{% endif %}
+  configuration = {% autoescape off %}{{ configuration }}{% endautoescape %}
 }

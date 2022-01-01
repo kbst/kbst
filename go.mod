@@ -8,6 +8,7 @@ replace github.com/kbst/kbst/pkg => ./pkg
 
 require (
 	github.com/adrg/xdg v0.2.1
+	github.com/flosch/pongo2/v4 v4.0.2
 	github.com/go-git/go-git/v5 v5.1.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20200806211835-c481b8bfa41e

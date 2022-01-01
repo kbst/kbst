@@ -7,8 +7,8 @@ import (
 	"path"
 	"path/filepath"
 	"testing"
-	"text/template"
 
+	"github.com/flosch/pongo2/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,12 +17,12 @@ var fixturesPath = path.Join(cwd, "../", "../", "test_fixtures", "generator")
 
 func TestCfgToHCLNodePool(t *testing.T) {
 	m := Module{
-		Name: "",
+		Name:     "",
 		Provider: "test",
-		Type: "node_pool",
+		Type:     "node_pool",
 		Children: []Module{},
 		Configuration: map[string]interface{}{
-			"name": "test",
+			"name":          "test",
 			"instance_type": "test",
 		},
 	}
@@ -37,9 +37,9 @@ func TestCfgToHCLNodePool(t *testing.T) {
 
 func TestCfgToHCLService(t *testing.T) {
 	m := Module{
-		Name: "test",
+		Name:     "test",
 		Provider: "kustomization",
-		Type: "service",
+		Type:     "service",
 		Children: []Module{},
 		Configuration: map[string]interface{}{
 			"variant": nil,
@@ -56,13 +56,13 @@ func TestCfgToHCLService(t *testing.T) {
 
 func TestCfgToHCLCluster(t *testing.T) {
 	m := Module{
-		Name: "",
+		Name:     "",
 		Provider: "test",
-		Type: "cluster",
+		Type:     "cluster",
 		Children: []Module{},
 		Configuration: map[string]interface{}{
 			"name_prefix": "test",
-			"region": "test",
+			"region":      "test",
 		},
 	}
 
@@ -76,13 +76,13 @@ func TestCfgToHCLCluster(t *testing.T) {
 
 func TestCfgToHCLClusterAWS(t *testing.T) {
 	m := Module{
-		Name: "",
+		Name:     "",
 		Provider: "aws",
-		Type: "cluster",
+		Type:     "cluster",
 		Children: []Module{},
 		Configuration: map[string]interface{}{
 			"name_prefix": "test",
-			"region": "test",
+			"region":      "test",
 		},
 	}
 
@@ -95,13 +95,12 @@ func TestCfgToHCLClusterAWS(t *testing.T) {
 }
 
 func TestRender(t *testing.T) {
-	tpl := template.Must(template.New("tpl").Parse("{{.Test}}"))
-	d := make(map[string]string)
-	d["Test"] = "test"
+	tpl := pongo2.Must(pongo2.FromString("{{test}}"))
+	d := pongo2.Context{"test": "test"}
 	s, err := render(tpl, d)
 
 	assert.Equal(t, nil, err, nil)
-	assert.Equal(t, d["Test"], s, nil)
+	assert.Equal(t, "test\n", s, nil)
 }
 
 func TestStackUnmarshal(t *testing.T) {
@@ -134,7 +133,7 @@ func TestStackTerraformSingleAKS(t *testing.T) {
 		"aks_kbst_westeurope_cluster.tf",
 		"aks_kbst_westeurope_providers.tf",
 		"aks_kbst_westeurope_node_pool_default.tf",
-		"aks_kbst_westeurope_cluster_service_nginx.tf"}
+		"aks_kbst_westeurope_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
 
@@ -162,7 +161,7 @@ func TestStackTerraformSingleEKS(t *testing.T) {
 		"eks_kbst_eu-west-1_cluster.tf",
 		"eks_kbst_eu-west-1_providers.tf",
 		"eks_kbst_eu-west-1_node_pool_default.tf",
-		"eks_kbst_eu-west-1_cluster_service_nginx.tf"}
+		"eks_kbst_eu-west-1_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
 
@@ -190,7 +189,7 @@ func TestStackTerraformSingleGKE(t *testing.T) {
 		"gke_kbst_europe-west1_cluster.tf",
 		"gke_kbst_europe-west1_providers.tf",
 		"gke_kbst_europe-west1_node_pool_default.tf",
-		"gke_kbst_europe-west1_cluster_service_nginx.tf"}
+		"gke_kbst_europe-west1_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
 
@@ -218,15 +217,15 @@ func TestStackTerraformMultiCloud(t *testing.T) {
 		"aks_kbst_westeurope_cluster.tf",
 		"aks_kbst_westeurope_providers.tf",
 		"aks_kbst_westeurope_node_pool_default.tf",
-		"aks_kbst_westeurope_cluster_service_nginx.tf",
+		"aks_kbst_westeurope_service_nginx.tf",
 		"eks_kbst_eu-west-1_cluster.tf",
 		"eks_kbst_eu-west-1_providers.tf",
 		"eks_kbst_eu-west-1_node_pool_default.tf",
-		"eks_kbst_eu-west-1_cluster_service_nginx.tf",
+		"eks_kbst_eu-west-1_service_nginx.tf",
 		"gke_kbst_europe-west1_cluster.tf",
 		"gke_kbst_europe-west1_providers.tf",
 		"gke_kbst_europe-west1_node_pool_default.tf",
-		"gke_kbst_europe-west1_cluster_service_nginx.tf"}
+		"gke_kbst_europe-west1_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
 

@@ -1,12 +1,11 @@
 package generator
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
-	"text/template"
 
+	"github.com/flosch/pongo2/v4"
 	"github.com/jinzhu/copier"
 
 	_ "embed"
@@ -59,7 +58,7 @@ func (s *Stack) Terraform() (files map[string]string, err error) {
 		return files, err
 	}
 
-	files["config.auto.tfvars"], err = render(templateConfigAuto, s)
+	files["config.auto.tfvars"], err = render(templateConfigAuto, pongo2.Context{"base_domain": s.BaseDomain})
 	if err != nil {
 		return files, err
 	}
@@ -77,14 +76,14 @@ func (s *Stack) Terraform() (files map[string]string, err error) {
 	return files, nil
 }
 
-func render(t *template.Template, d interface{}) (s string, err error) {
-	var tpl bytes.Buffer
-	err = t.Execute(&tpl, d)
+func render(t *pongo2.Template, ctx pongo2.Context) (s string, err error) {
+	s, err = t.Execute(ctx)
 	if err != nil {
 		return s, err
 	}
 
-	s = tpl.String()
+	s = strings.TrimSpace(s)
+	s += "\n"
 
 	return s, nil
 }
@@ -122,7 +121,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		return files, fmt.Errorf("cfgToHCL failed: %s", err)
 	}
 
-	data := map[string]string{
+	data := pongo2.Context{
 		"name":                   n,
 		"provider":               m.Provider,
 		"version":                m.Version,
@@ -136,7 +135,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 	}
 
 	if m.Type == "cluster" {
-		pData := map[string]string{
+		pData := pongo2.Context{
 			"clusterModule": n,
 			"provider":      m.Provider,
 			"region":        m.Configuration["region"].(string),
@@ -151,8 +150,8 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 	for _, cm := range m.Children {
 
 		cn := ""
-		var ct *template.Template
-		var cData map[string]string
+		var ct *pongo2.Template
+		var cData pongo2.Context
 
 		cmcfg, err := cm.cfgToHCL()
 		if err != nil {
@@ -162,7 +161,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		if cm.Type == "node_pool" {
 			cn = fmt.Sprintf("%s_%s_%s", n, cm.Type, cm.Configuration["name"].(string))
 			ct = templateClusterNodePool
-			cData = map[string]string{
+			cData = pongo2.Context{
 				"name":                   cn,
 				"provider":               cm.Provider,
 				"version":                cm.Version,
@@ -173,9 +172,9 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		}
 
 		if cm.Type == "service" {
-			cn = fmt.Sprintf("%s_cluster_service_%s", n, cm.Name)
+			cn = fmt.Sprintf("%s_%s_%s", n, cm.Type, cm.Name)
 			ct = templateClusterService
-			cData = map[string]string{
+			cData = pongo2.Context{
 				"moduleName":             cn,
 				"serviceName":            cm.Name,
 				"provider":               cm.Provider,
