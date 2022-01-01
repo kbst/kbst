@@ -3,7 +3,7 @@ module "{{.name}}" {
     aws = aws.{{.clusterName}}
   } 
   {{end}}
-  source = "github.com/kbst/terraform-kubestack//{{.provider}}/cluster/node-pool?ref=v0.16.0-beta.0"
+  source = "github.com/kbst/terraform-kubestack//{{.provider}}/cluster/node-pool?ref={{.version}}"
 
   {{if eq .provider "azurerm" "aws"}}cluster_name = module.{{.clusterName}}.current_metadata["name"]{{end}}
   {{if eq .provider "azurerm"}}resource_group = module.{{.clusterName}}.current_config["resource_group"]{{end}}

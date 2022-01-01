@@ -93,6 +93,7 @@ type Module struct {
 	Name          string                 `json:"name"`
 	Provider      string                 `json:"provider"`
 	Type          string                 `json:"type"`
+	Version       string                 `json:"version"`
 	Children      []Module               `json:"children"`
 	Configuration map[string]interface{} `json:"configuration"`
 }
@@ -124,6 +125,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 	data := map[string]string{
 		"name":                   n,
 		"provider":               m.Provider,
+		"version":                m.Version,
 		"configuration_base_key": cbk,
 		"configuration":          cfg,
 	}
@@ -163,6 +165,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 			cData = map[string]string{
 				"name":                   cn,
 				"provider":               cm.Provider,
+				"version":                cm.Version,
 				"clusterName":            n,
 				"configuration_base_key": cbk,
 				"configuration":          cmcfg,
@@ -176,6 +179,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 				"moduleName":             cn,
 				"serviceName":            cm.Name,
 				"provider":               cm.Provider,
+				"version":                cm.Version,
 				"providerAlias":          n,
 				"configuration_base_key": cbk,
 				"configuration":          cmcfg,
