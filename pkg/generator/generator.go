@@ -201,7 +201,7 @@ func (m *Module) cfgToHCL() (hcl string, err error) {
 	if m.Type == "cluster" {
 		cfg["base_domain"] = "var.base_domain"
 
-		if m.Provider == "aws" {
+		if m.Provider == "aws" || m.Provider == "azurerm" {
 			delete(cfg, "region")
 		}
 	}

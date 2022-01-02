@@ -54,13 +54,14 @@ func TestCfgToHCLService(t *testing.T) {
 	assert.Equal(t, expected, hcl, nil)
 }
 
-func TestCfgToHCLCluster(t *testing.T) {
+func TestCfgToHCLClusterGoogle(t *testing.T) {
 	m := Module{
 		Name:     "",
-		Provider: "test",
+		Provider: "google",
 		Type:     "cluster",
 		Children: []Module{},
 		Configuration: map[string]interface{}{
+			"project_id":  "test",
 			"name_prefix": "test",
 			"region":      "test",
 		},
@@ -70,7 +71,7 @@ func TestCfgToHCLCluster(t *testing.T) {
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n    \"region\" = \"test\"\n  }"
+	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n    \"project_id\" = \"test\"\n    \"region\" = \"test\"\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -91,6 +92,27 @@ func TestCfgToHCLClusterAWS(t *testing.T) {
 	assert.Equal(t, nil, err, nil)
 
 	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n  }"
+	assert.Equal(t, expected, hcl, nil)
+}
+
+func TestCfgToHCLClusterAzurerm(t *testing.T) {
+	m := Module{
+		Name:     "",
+		Provider: "azurerm",
+		Type:     "cluster",
+		Children: []Module{},
+		Configuration: map[string]interface{}{
+			"name_prefix":    "test",
+			"region":         "test",
+			"resource_group": "test",
+		},
+	}
+
+	hcl, err := m.cfgToHCL()
+
+	assert.Equal(t, nil, err, nil)
+
+	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n    \"resource_group\" = \"test\"\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
