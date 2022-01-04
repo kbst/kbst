@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/jinzhu/copier"
 
 	_ "embed"
 
@@ -17,12 +16,14 @@ import (
 type Environment struct {
 	IsConfigurationBaseKey bool   `json:"is_configuration_base_key"`
 	Name                   string `json:"name"`
+	Key                    string `json:"key"`
 }
 
 type Stack struct {
-	BaseDomain   string        `json:"base_domain"`
-	Environments []Environment `json:"environments"`
-	Modules      []Module      `json:"modules"`
+	BaseDomain      string        `json:"base_domain"`
+	BaseEnvironment string        `json:"base_environment"`
+	Environments    []Environment `json:"environments"`
+	Modules         []Module      `json:"modules"`
 }
 
 func (s *Stack) Unmarshal(d []byte) (err error) {
@@ -31,22 +32,41 @@ func (s *Stack) Unmarshal(d []byte) (err error) {
 		return err
 	}
 
+	ckn := s.configuration_key_names()
+	cbk := ckn[s.BaseEnvironment]
+
+	var mod []Module
+	for _, m := range s.Modules {
+		m.cfgsToCfg(cbk, ckn)
+
+		var cmod []Module
+		for _, cm := range m.Children {
+			cm.cfgsToCfg(cbk, ckn)
+
+			cmod = append(cmod, cm)
+		}
+		m.Children = cmod
+
+		mod = append(mod, m)
+	}
+	s.Modules = mod
+
 	return nil
 }
 
-func (s *Stack) configuration_base_key() (key string) {
+func (s *Stack) configuration_key_names() map[string]string {
+	kn := make(map[string]string)
 	for _, e := range s.Environments {
-		if e.IsConfigurationBaseKey {
-			key = e.Name
-		}
+		kn[e.Key] = e.Name
 	}
 
-	return key
+	return kn
 }
 
 func (s *Stack) Terraform() (files map[string]string, err error) {
 	files = make(map[string]string)
-	cbk := s.configuration_base_key()
+	ckn := s.configuration_key_names()
+	cbk := ckn[s.BaseEnvironment]
 
 	files["versions.tf"], err = render(templateVersions, nil)
 	if err != nil {
@@ -89,12 +109,24 @@ func render(t *pongo2.Template, ctx pongo2.Context) (s string, err error) {
 }
 
 type Module struct {
-	Name          string                 `json:"name"`
-	Provider      string                 `json:"provider"`
-	Type          string                 `json:"type"`
-	Version       string                 `json:"version"`
-	Children      []Module               `json:"children"`
-	Configuration map[string]interface{} `json:"configuration"`
+	Name           string                   `json:"name"`
+	Provider       string                   `json:"provider"`
+	Type           string                   `json:"type"`
+	Version        string                   `json:"version"`
+	Children       []Module                 `json:"children"`
+	Configurations []map[string]interface{} `json:"configurations"`
+	Configuration  map[string]map[string]interface{}
+}
+
+func (m *Module) cfgsToCfg(cbk string, ckn map[string]string) {
+	m.Configuration = make(map[string]map[string]interface{})
+
+	for _, c := range m.Configurations {
+		k := ckn[c["env_key"].(string)]
+		v := c["data"].(map[string]interface{})
+
+		m.Configuration[k] = v
+	}
 }
 
 func (m *Module) GetK8sServiceName() string {
@@ -110,13 +142,15 @@ func (m *Module) GetK8sServiceName() string {
 func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string, err error) {
 	files = make(map[string]string)
 
+	region := m.Configuration[cbk]["region"].(string)
+
 	n := fmt.Sprintf(
 		"%s_%s_%s",
 		m.GetK8sServiceName(),
-		m.Configuration["name_prefix"].(string),
-		m.Configuration["region"].(string))
+		m.Configuration[cbk]["name_prefix"].(string),
+		region)
 
-	cfg, err := m.cfgToHCL()
+	cfg, err := m.cfgToHCL(cbk)
 	if err != nil {
 		return files, fmt.Errorf("cfgToHCL failed: %s", err)
 	}
@@ -138,7 +172,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		pData := pongo2.Context{
 			"clusterModule": n,
 			"provider":      m.Provider,
-			"region":        m.Configuration["region"].(string),
+			"region":        region,
 		}
 
 		files[fmt.Sprintf("%s_%s.tf", n, "providers")], err = render(templateClusterProviders, pData)
@@ -153,13 +187,13 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		var ct *pongo2.Template
 		var cData pongo2.Context
 
-		cmcfg, err := cm.cfgToHCL()
+		cmcfg, err := cm.cfgToHCL(cbk)
 		if err != nil {
 			return files, fmt.Errorf("cfgToHCL failed: %s", err)
 		}
 
 		if cm.Type == "node_pool" {
-			cn = fmt.Sprintf("%s_%s_%s", n, cm.Type, cm.Configuration["name"].(string))
+			cn = fmt.Sprintf("%s_%s_%s", n, cm.Type, cm.Configuration[cbk]["name"].(string))
 			ct = templateClusterNodePool
 			cData = pongo2.Context{
 				"name":                   cn,
@@ -194,15 +228,23 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 	return files, nil
 }
 
-func (m *Module) cfgToHCL() (hcl string, err error) {
-	var cfg map[string]interface{}
-	copier.Copy(&cfg, &m.Configuration)
+func (m *Module) cfgToHCL(cbk string) (hcl string, err error) {
+	cfg := m.Configuration
 
 	if m.Type == "cluster" {
-		cfg["base_domain"] = "var.base_domain"
+		cfg[cbk]["base_domain"] = "var.base_domain"
 
 		if m.Provider == "aws" || m.Provider == "azurerm" {
-			delete(cfg, "region")
+			delete(cfg[cbk], "region")
+		}
+	}
+
+	// remove null values
+	for _, ov := range m.Configuration {
+		for ik, iv := range ov {
+			if iv == nil {
+				delete(ov, ik)
+			}
 		}
 	}
 

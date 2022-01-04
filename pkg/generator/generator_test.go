@@ -21,17 +21,21 @@ func TestCfgToHCLNodePool(t *testing.T) {
 		Provider: "test",
 		Type:     "node_pool",
 		Children: []Module{},
-		Configuration: map[string]interface{}{
-			"name":          "test",
-			"instance_type": "test",
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"name":          "test",
+				"instance_type": "test",
+			},
+
+			"ops": {},
 		},
 	}
 
-	hcl, err := m.cfgToHCL()
+	hcl, err := m.cfgToHCL("apps")
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"instance_type\" = \"test\"\n    \"name\" = \"test\"\n  }"
+	expected := "{\n    \"apps\" = {\n      \"instance_type\" = \"test\"\n      \"name\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -41,16 +45,20 @@ func TestCfgToHCLService(t *testing.T) {
 		Provider: "kustomization",
 		Type:     "service",
 		Children: []Module{},
-		Configuration: map[string]interface{}{
-			"variant": nil,
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"variant": nil,
+			},
+
+			"ops": {},
 		},
 	}
 
-	hcl, err := m.cfgToHCL()
+	hcl, err := m.cfgToHCL("apps")
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"variant\" = null\n  }"
+	expected := "{\n    \"apps\" = {}\n    \"ops\" = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -60,18 +68,22 @@ func TestCfgToHCLClusterGoogle(t *testing.T) {
 		Provider: "google",
 		Type:     "cluster",
 		Children: []Module{},
-		Configuration: map[string]interface{}{
-			"project_id":  "test",
-			"name_prefix": "test",
-			"region":      "test",
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"project_id":  "test",
+				"name_prefix": "test",
+				"region":      "test",
+			},
+
+			"ops": {},
 		},
 	}
 
-	hcl, err := m.cfgToHCL()
+	hcl, err := m.cfgToHCL("apps")
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n    \"project_id\" = \"test\"\n    \"region\" = \"test\"\n  }"
+	expected := "{\n    \"apps\" = {\n      \"base_domain\" = var.base_domain\n      \"name_prefix\" = \"test\"\n      \"project_id\" = \"test\"\n      \"region\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -81,17 +93,21 @@ func TestCfgToHCLClusterAWS(t *testing.T) {
 		Provider: "aws",
 		Type:     "cluster",
 		Children: []Module{},
-		Configuration: map[string]interface{}{
-			"name_prefix": "test",
-			"region":      "test",
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"name_prefix": "test",
+				"region":      "test",
+			},
+
+			"ops": {},
 		},
 	}
 
-	hcl, err := m.cfgToHCL()
+	hcl, err := m.cfgToHCL("apps")
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n  }"
+	expected := "{\n    \"apps\" = {\n      \"base_domain\" = var.base_domain\n      \"name_prefix\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -101,18 +117,22 @@ func TestCfgToHCLClusterAzurerm(t *testing.T) {
 		Provider: "azurerm",
 		Type:     "cluster",
 		Children: []Module{},
-		Configuration: map[string]interface{}{
-			"name_prefix":    "test",
-			"region":         "test",
-			"resource_group": "test",
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"name_prefix":    "test",
+				"region":         "test",
+				"resource_group": "test",
+			},
+
+			"ops": {},
 		},
 	}
 
-	hcl, err := m.cfgToHCL()
+	hcl, err := m.cfgToHCL("apps")
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"base_domain\" = var.base_domain\n    \"name_prefix\" = \"test\"\n    \"resource_group\" = \"test\"\n  }"
+	expected := "{\n    \"apps\" = {\n      \"base_domain\" = var.base_domain\n      \"name_prefix\" = \"test\"\n      \"resource_group\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 

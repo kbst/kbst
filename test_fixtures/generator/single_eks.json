@@ -1,43 +1,82 @@
 {
     "base_domain": "kubestack.example.com",
+    "base_environment": "apps",
     "environments": [
         {
-            "is_configuration_base_key": false,
-            "name": "ops"
+            "key": "apps",
+            "name": "apps"
         },
         {
-            "is_configuration_base_key": true,
-            "name": "apps"
+            "key": "ops",
+            "name": "ops"
         }
     ],
     "modules": [
         {
             "children": [
                 {
-                    "configuration": {
-                        "instance_type": "t3a.medium",
-                        "name": "default"
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "instance_type": "t3a.medium",
+                                "name": "default"
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": null,
                     "provider": "aws",
-                    "type": "node_pool"
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
                 },
                 {
-                    "configuration": {
-                        "variant": null
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": "nginx",
                     "provider": "kustomization",
-                    "type": "service"
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
                 }
             ],
-            "configuration": {
-                "name_prefix": "kbst",
-                "region": "eu-west-1"
-            },
+            "configurations": [
+                {
+                    "data": {
+                        "name_prefix": "kbst",
+                        "region": "eu-west-1"
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
             "name": null,
             "provider": "aws",
-            "type": "cluster"
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
         }
     ]
 }

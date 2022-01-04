@@ -1,103 +1,278 @@
 {
     "base_domain": "kubestack.example.com",
+    "base_environment": "apps_prod",
     "environments": [
         {
-            "is_configuration_base_key": false,
-            "name": "ops"
+            "key": "apps_prod",
+            "name": "apps-prod"
         },
         {
-            "is_configuration_base_key": false,
+            "key": "apps",
             "name": "apps"
         },
         {
-            "is_configuration_base_key": true,
-            "name": "apps-prod"
+            "key": "ops",
+            "name": "ops"
         }
     ],
     "modules": [
         {
             "children": [
                 {
-                    "configuration": {
-                        "instance_type": "t3a.medium",
-                        "name": "default"
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "instance_type": "t3a.medium",
+                                "name": "default"
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": null,
                     "provider": "aws",
-                    "type": "node_pool"
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
                 },
                 {
-                    "configuration": {
-                        "variant": null
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": "nginx",
                     "provider": "kustomization",
-                    "type": "service"
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
                 }
             ],
-            "configuration": {
-                "name_prefix": "kbst",
-                "region": "eu-west-1"
-            },
+            "configurations": [
+                {
+                    "data": {
+                        "name_prefix": "kbst",
+                        "region": "eu-west-1"
+                    },
+                    "env_key": "apps_prod"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
             "name": null,
             "provider": "aws",
-            "type": "cluster"
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
         },
         {
             "children": [
                 {
-                    "configuration": {
-                        "instance_type": "Standard_B2s",
-                        "name": "default"
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "instance_type": "Standard_B2s",
+                                "name": "default"
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": null,
                     "provider": "azurerm",
-                    "type": "node_pool"
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
                 },
                 {
-                    "configuration": {
-                        "variant": null
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": "nginx",
                     "provider": "kustomization",
-                    "type": "service"
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
                 }
             ],
-            "configuration": {
-                "name_prefix": "kbst",
-                "region": "westeurope"
-            },
+            "configurations": [
+                {
+                    "data": {
+                        "name_prefix": "kbst",
+                        "region": "westeurope"
+                    },
+                    "env_key": "apps_prod"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
             "name": null,
             "provider": "azurerm",
-            "type": "cluster"
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
         },
         {
             "children": [
                 {
-                    "configuration": {
-                        "instance_type": "e2-medium",
-                        "name": "default"
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "instance_type": "e2-medium",
+                                "name": "default"
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "instance_type": null,
+                                "name": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": null,
                     "provider": "google",
-                    "type": "node_pool"
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
                 },
                 {
-                    "configuration": {
-                        "variant": null
-                    },
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
                     "name": "nginx",
                     "provider": "kustomization",
-                    "type": "service"
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
                 }
             ],
-            "configuration": {
-                "name_prefix": "kbst",
-                "region": "europe-west1"
-            },
+            "configurations": [
+                {
+                    "data": {
+                        "name_prefix": "kbst",
+                        "region": "europe-west1"
+                    },
+                    "env_key": "apps_prod"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
             "name": null,
             "provider": "google",
-            "type": "cluster"
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
         }
     ]
 }
