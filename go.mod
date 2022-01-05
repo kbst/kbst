@@ -12,8 +12,7 @@ require (
 	github.com/go-git/go-git/v5 v5.1.0
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/hashicorp/terraform-config-inspect v0.0.0-20200806211835-c481b8bfa41e
-	github.com/jinzhu/copier v0.3.4
-	github.com/jrhouston/tfk8s v0.1.7
+	github.com/jrhouston/tfk8s v0.1.8-0.20210920185603-779052548f82
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/testify v1.5.1
 	github.com/zclconf/go-cty v1.8.0

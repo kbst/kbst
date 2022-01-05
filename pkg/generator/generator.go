@@ -275,7 +275,7 @@ func formatHCL(d []byte) (hcl string, err error) {
 		return hcl, fmt.Errorf("ctyjson unmarshal: %s", err)
 	}
 
-	hcl = tfk8s.FormatValue(doc, 2)
+	hcl = tfk8s.FormatValue(doc, 2, true)
 
 	return hcl, nil
 }

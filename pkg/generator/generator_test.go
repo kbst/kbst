@@ -35,7 +35,7 @@ func TestCfgToHCLNodePool(t *testing.T) {
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"apps\" = {\n      \"instance_type\" = \"test\"\n      \"name\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
+	expected := "{\n    apps = {\n      instance_type = \"test\"\n      name = \"test\"\n    }\n    ops = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -58,7 +58,7 @@ func TestCfgToHCLService(t *testing.T) {
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"apps\" = {}\n    \"ops\" = {}\n  }"
+	expected := "{\n    apps = {}\n    ops = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -83,7 +83,7 @@ func TestCfgToHCLClusterGoogle(t *testing.T) {
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"apps\" = {\n      \"base_domain\" = var.base_domain\n      \"name_prefix\" = \"test\"\n      \"project_id\" = \"test\"\n      \"region\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
+	expected := "{\n    apps = {\n      base_domain = var.base_domain\n      name_prefix = \"test\"\n      project_id = \"test\"\n      region = \"test\"\n    }\n    ops = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -107,7 +107,7 @@ func TestCfgToHCLClusterAWS(t *testing.T) {
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"apps\" = {\n      \"base_domain\" = var.base_domain\n      \"name_prefix\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
+	expected := "{\n    apps = {\n      base_domain = var.base_domain\n      name_prefix = \"test\"\n    }\n    ops = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
@@ -132,7 +132,7 @@ func TestCfgToHCLClusterAzurerm(t *testing.T) {
 
 	assert.Equal(t, nil, err, nil)
 
-	expected := "{\n    \"apps\" = {\n      \"base_domain\" = var.base_domain\n      \"name_prefix\" = \"test\"\n      \"resource_group\" = \"test\"\n    }\n    \"ops\" = {}\n  }"
+	expected := "{\n    apps = {\n      base_domain = var.base_domain\n      name_prefix = \"test\"\n      resource_group = \"test\"\n    }\n    ops = {}\n  }"
 	assert.Equal(t, expected, hcl, nil)
 }
 
