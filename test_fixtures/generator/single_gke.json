@@ -18,28 +18,6 @@
                     "configurations": [
                         {
                             "data": {
-                                "instance_type": "e2-medium",
-                                "name": "default"
-                            },
-                            "env_key": "apps"
-                        },
-                        {
-                            "data": {
-                                "instance_type": null,
-                                "name": null
-                            },
-                            "env_key": "ops"
-                        }
-                    ],
-                    "name": null,
-                    "provider": "google",
-                    "type": "node_pool",
-                    "version": "v0.16.0-beta.0"
-                },
-                {
-                    "configurations": [
-                        {
-                            "data": {
                                 "variant": null
                             },
                             "env_key": "apps"
@@ -60,14 +38,28 @@
             "configurations": [
                 {
                     "data": {
+                        "cluster_initial_node_count": 1,
+                        "cluster_machine_type": "e2-standard-8",
+                        "cluster_max_node_count": 3,
+                        "cluster_min_master_version": "1.20",
+                        "cluster_min_node_count": 1,
+                        "cluster_node_locations": "europe-west1-b,europe-west1-c,europe-west1-d",
                         "name_prefix": "kbst",
+                        "project_id": "terraform-kubestack-testing",
                         "region": "europe-west1"
                     },
                     "env_key": "apps"
                 },
                 {
                     "data": {
+                        "cluster_initial_node_count": null,
+                        "cluster_machine_type": null,
+                        "cluster_max_node_count": null,
+                        "cluster_min_master_version": null,
+                        "cluster_min_node_count": null,
+                        "cluster_node_locations": null,
                         "name_prefix": null,
+                        "project_id": null,
                         "region": null
                     },
                     "env_key": "ops"

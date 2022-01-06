@@ -18,31 +18,15 @@
                     "configurations": [
                         {
                             "data": {
-                                "instance_type": "Standard_B2s",
-                                "name": "default"
+                                "variant": null
                             },
                             "env_key": "apps"
                         },
                         {
                             "data": {
-                                "instance_type": null,
-                                "name": null
-                            },
-                            "env_key": "ops"
-                        }
-                    ],
-                    "name": null,
-                    "provider": "azurerm",
-                    "type": "node_pool",
-                    "version": "v0.16.0-beta.0"
-                },
-                {
-                    "configurations": [
-                        {
-                            "data": {
                                 "variant": null
                             },
-                            "env_key": "apps"
+                            "env_key": "ops"
                         }
                     ],
                     "name": "nginx",
@@ -54,15 +38,25 @@
             "configurations": [
                 {
                     "data": {
+                        "default_node_pool_max_count": 6,
+                        "default_node_pool_min_count": 3,
+                        "default_node_pool_node_count": 3,
+                        "default_node_pool_vm_size": "Standard_D4_v4",
                         "name_prefix": "kbst",
-                        "region": "westeurope"
+                        "region": "westeurope",
+                        "resource_group": "terraform-kubestack-testing"
                     },
                     "env_key": "apps"
                 },
                 {
                     "data": {
+                        "default_node_pool_max_count": null,
+                        "default_node_pool_min_count": null,
+                        "default_node_pool_node_count": null,
+                        "default_node_pool_vm_size": null,
                         "name_prefix": null,
-                        "region": null
+                        "region": null,
+                        "resource_group": null
                     },
                     "env_key": "ops"
                 }

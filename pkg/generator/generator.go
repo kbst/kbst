@@ -150,7 +150,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		m.Configuration[cbk]["name_prefix"].(string),
 		region)
 
-	cfg, err := m.cfgToHCL(cbk)
+	cfg, err := m.cfgToHCL(cbk, "")
 	if err != nil {
 		return files, fmt.Errorf("cfgToHCL failed: %s", err)
 	}
@@ -187,13 +187,19 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 		var ct *pongo2.Template
 		var cData pongo2.Context
 
-		cmcfg, err := cm.cfgToHCL(cbk)
+		cmcfg, err := cm.cfgToHCL(cbk, n)
 		if err != nil {
 			return files, fmt.Errorf("cfgToHCL failed: %s", err)
 		}
 
 		if cm.Type == "node_pool" {
-			cn = fmt.Sprintf("%s_%s_%s", n, cm.Type, cm.Configuration[cbk]["name"].(string))
+			var npn string
+			if cm.Provider == "azurerm" {
+				npn = cm.Configuration[cbk]["node_pool_name"].(string)
+			} else {
+				npn = cm.Configuration[cbk]["name"].(string)
+			}
+			cn = fmt.Sprintf("%s_%s_%s", n, cm.Type, npn)
 			ct = templateClusterNodePool
 			cData = pongo2.Context{
 				"name":                   cn,
@@ -228,7 +234,7 @@ func (m *Module) toHCL(cbk string, base_domain string) (files map[string]string,
 	return files, nil
 }
 
-func (m *Module) cfgToHCL(cbk string) (hcl string, err error) {
+func (m *Module) cfgToHCL(cbk string, n string) (hcl string, err error) {
 	cfg := m.Configuration
 
 	if m.Type == "cluster" {
@@ -236,6 +242,16 @@ func (m *Module) cfgToHCL(cbk string) (hcl string, err error) {
 
 		if m.Provider == "aws" || m.Provider == "azurerm" {
 			delete(cfg[cbk], "region")
+		}
+	}
+
+	mr := fmt.Sprintf("module.%s.current_config[\"project_id\"]", n)
+	if m.Type == "node_pool" {
+		if m.Provider == "google" {
+			cfg[cbk]["project_id"] = mr
+
+			nl := cfg[cbk]["node_locations"].(string)
+			cfg[cbk]["node_locations"] = strings.Split(nl, ",")
 		}
 	}
 
@@ -260,6 +276,9 @@ func (m *Module) cfgToHCL(cbk string) (hcl string, err error) {
 
 	// remove "" around base_domain var
 	hcl = strings.Replace(hcl, "\"var.base_domain\"", "var.base_domain", 1)
+
+	// remove "" around cluster module ref
+	hcl = strings.Replace(hcl, fmt.Sprintf("%q", mr), mr, 1)
 
 	return hcl, nil
 }

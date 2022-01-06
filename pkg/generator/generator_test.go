@@ -15,10 +15,59 @@ import (
 var cwd, _ = os.Getwd()
 var fixturesPath = path.Join(cwd, "../", "../", "test_fixtures", "generator")
 
-func TestCfgToHCLNodePool(t *testing.T) {
+func TestCfgToHCLNodePoolGoogle(t *testing.T) {
 	m := Module{
 		Name:     "",
-		Provider: "test",
+		Provider: "google",
+		Type:     "node_pool",
+		Children: []Module{},
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"name":           "test",
+				"machine_type":   "test",
+				"node_locations": "test1,test2,test3",
+			},
+
+			"ops": {},
+		},
+	}
+
+	hcl, err := m.cfgToHCL("apps", "gke_test_test")
+
+	assert.Equal(t, nil, err, nil)
+
+	expected := "{\n    apps = {\n      machine_type = \"test\"\n      name = \"test\"\n      node_locations = [\n        \"test1\",\n        \"test2\",\n        \"test3\",\n      ]\n      project_id = module.gke_test_test.current_config[\"project_id\"]\n    }\n    ops = {}\n  }"
+	assert.Equal(t, expected, hcl, nil)
+}
+
+func TestCfgToHCLNodePoolAzure(t *testing.T) {
+	m := Module{
+		Name:     "",
+		Provider: "azurerm",
+		Type:     "node_pool",
+		Children: []Module{},
+		Configuration: map[string]map[string]interface{}{
+			"apps": {
+				"node_pool_name": "test",
+				"vm_size":        "test",
+			},
+
+			"ops": {},
+		},
+	}
+
+	hcl, err := m.cfgToHCL("apps", "")
+
+	assert.Equal(t, nil, err, nil)
+
+	expected := "{\n    apps = {\n      node_pool_name = \"test\"\n      vm_size = \"test\"\n    }\n    ops = {}\n  }"
+	assert.Equal(t, expected, hcl, nil)
+}
+
+func TestCfgToHCLNodePoolAWS(t *testing.T) {
+	m := Module{
+		Name:     "",
+		Provider: "aws",
 		Type:     "node_pool",
 		Children: []Module{},
 		Configuration: map[string]map[string]interface{}{
@@ -31,7 +80,7 @@ func TestCfgToHCLNodePool(t *testing.T) {
 		},
 	}
 
-	hcl, err := m.cfgToHCL("apps")
+	hcl, err := m.cfgToHCL("apps", "")
 
 	assert.Equal(t, nil, err, nil)
 
@@ -54,7 +103,7 @@ func TestCfgToHCLService(t *testing.T) {
 		},
 	}
 
-	hcl, err := m.cfgToHCL("apps")
+	hcl, err := m.cfgToHCL("apps", "")
 
 	assert.Equal(t, nil, err, nil)
 
@@ -79,7 +128,7 @@ func TestCfgToHCLClusterGoogle(t *testing.T) {
 		},
 	}
 
-	hcl, err := m.cfgToHCL("apps")
+	hcl, err := m.cfgToHCL("apps", "")
 
 	assert.Equal(t, nil, err, nil)
 
@@ -103,7 +152,7 @@ func TestCfgToHCLClusterAWS(t *testing.T) {
 		},
 	}
 
-	hcl, err := m.cfgToHCL("apps")
+	hcl, err := m.cfgToHCL("apps", "")
 
 	assert.Equal(t, nil, err, nil)
 
@@ -128,7 +177,7 @@ func TestCfgToHCLClusterAzurerm(t *testing.T) {
 		},
 	}
 
-	hcl, err := m.cfgToHCL("apps")
+	hcl, err := m.cfgToHCL("apps", "")
 
 	assert.Equal(t, nil, err, nil)
 
@@ -174,7 +223,6 @@ func TestStackTerraformSingleAKS(t *testing.T) {
 		"config.auto.tfvars",
 		"aks_kbst_westeurope_cluster.tf",
 		"aks_kbst_westeurope_providers.tf",
-		"aks_kbst_westeurope_node_pool_default.tf",
 		"aks_kbst_westeurope_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
@@ -202,7 +250,6 @@ func TestStackTerraformSingleEKS(t *testing.T) {
 		"config.auto.tfvars",
 		"eks_kbst_eu-west-1_cluster.tf",
 		"eks_kbst_eu-west-1_providers.tf",
-		"eks_kbst_eu-west-1_node_pool_default.tf",
 		"eks_kbst_eu-west-1_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
@@ -230,7 +277,6 @@ func TestStackTerraformSingleGKE(t *testing.T) {
 		"config.auto.tfvars",
 		"gke_kbst_europe-west1_cluster.tf",
 		"gke_kbst_europe-west1_providers.tf",
-		"gke_kbst_europe-west1_node_pool_default.tf",
 		"gke_kbst_europe-west1_service_nginx.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
@@ -258,16 +304,19 @@ func TestStackTerraformMultiCloud(t *testing.T) {
 		"config.auto.tfvars",
 		"aks_kbst_westeurope_cluster.tf",
 		"aks_kbst_westeurope_providers.tf",
-		"aks_kbst_westeurope_node_pool_default.tf",
+		"aks_kbst_westeurope_node_pool_extra.tf",
 		"aks_kbst_westeurope_service_nginx.tf",
+		"aks_kbst_westeurope_service_cert-manager.tf",
 		"eks_kbst_eu-west-1_cluster.tf",
 		"eks_kbst_eu-west-1_providers.tf",
-		"eks_kbst_eu-west-1_node_pool_default.tf",
+		"eks_kbst_eu-west-1_node_pool_extra.tf",
 		"eks_kbst_eu-west-1_service_nginx.tf",
+		"eks_kbst_eu-west-1_service_cert-manager.tf",
 		"gke_kbst_europe-west1_cluster.tf",
 		"gke_kbst_europe-west1_providers.tf",
-		"gke_kbst_europe-west1_node_pool_default.tf",
-		"gke_kbst_europe-west1_service_nginx.tf"}
+		"gke_kbst_europe-west1_node_pool_extra.tf",
+		"gke_kbst_europe-west1_service_nginx.tf",
+		"gke_kbst_europe-west1_service_cert-manager.tf"}
 
 	assert.Equal(t, len(expected), len(files), "list of files does not have expected length")
 
