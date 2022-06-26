@@ -18,7 +18,7 @@ provider "kustomization" {
 
   kubeconfig_raw = module.{{ clusterModule }}.kubeconfig
 }
-{% if provider == "aws" %}
+{% if provider != "azurerm" %}
 locals {
   {{ clusterModule }}_kubeconfig = yamldecode(module.{{ clusterModule }}.kubeconfig)
 }
@@ -28,11 +28,6 @@ provider "kubernetes" {
 
   host                   = local.{{ clusterModule }}_kubeconfig["clusters"][0]["cluster"]["server"]
   cluster_ca_certificate = base64decode(local.{{ clusterModule }}_kubeconfig["clusters"][0]["cluster"]["certificate-authority-data"])
-
-  exec {
-    api_version = local.{{ clusterModule }}_kubeconfig["users"][0]["user"]["exec"]["apiVersion"]
-    args        = local.{{ clusterModule }}_kubeconfig["users"][0]["user"]["exec"]["args"]
-    command     = local.{{ clusterModule }}_kubeconfig["users"][0]["user"]["exec"]["command"]
-  }
+  token                  = local.{{ clusterModule }}_kubeconfig["users"][0]["user"]["token"]
 }
 {% endif %}
