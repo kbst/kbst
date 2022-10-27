@@ -26,14 +26,14 @@ import (
 
 var Version string
 
-var cfgFile string
+//var cfgFile string
 var path string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "kbst",
 	Short: "Kubestack Framework CLI",
-	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// check if a newer CLI version is available
 		cj := util.CliJSON{}
 		err := cj.Load(util.CachedDownloader{})
@@ -46,8 +46,9 @@ var rootCmd = &cobra.Command{
 			latest := cj.Cli.Versions[0].Name
 
 			if semver.Compare(current, latest) == -1 {
-				fmt.Printf("The latest version %s of `kbst` is newer than your current version %s\n", latest, current)
-				fmt.Printf("To update visit: https://github.com/kbst/kbst/releases/tag/%v\n", latest)
+				fmt.Fprintf(cmd.OutOrStderr(), "The latest version %s of `kbst` is newer than your current version %s\n", latest, current)
+				fmt.Fprintf(cmd.OutOrStderr(), "To update visit: https://github.com/kbst/kbst/releases/tag/%v\n", latest)
+				fmt.Fprint(cmd.OutOrStderr(), "\n")
 			}
 		}
 	},
