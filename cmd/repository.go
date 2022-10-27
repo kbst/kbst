@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,11 +35,12 @@ var repositoryCmd = &cobra.Command{
 
 // repositoryInitCmd represents the repository init command
 var repositoryInitCmd = &cobra.Command{
-	Use:   "init <starter>",
+	Use:   "init <starter> <base_domain>",
 	Short: "Scaffold a new repository",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		starter := args[0]
+		baseDomain := args[1]
 		cj := util.CliJSON{}
 		err := cj.Load(util.CachedDownloader{})
 		if err != nil {
@@ -49,7 +50,30 @@ var repositoryInitCmd = &cobra.Command{
 			Framework:  cj.Framework,
 			Downloader: util.CachedDownloader{},
 		}
-		err = r.Init(starter, repoRelease, repoGitRef, path)
+		err = r.Init(starter, baseDomain, repoRelease, repoGitRef, path)
+		if err != nil {
+			log.Fatal(err)
+		}
+	},
+}
+
+var repositoryGenerateCmd = &cobra.Command{
+	Use:    "generate <json_path>",
+	Args:   cobra.ExactArgs(1),
+	Hidden: true,
+	Run: func(cmd *cobra.Command, args []string) {
+		json_path := args[0]
+		cj := util.CliJSON{}
+		err := cj.Load(util.CachedDownloader{})
+		if err != nil {
+			log.Fatal(err)
+		}
+		r := cli.Repo{
+			Catalog:    cj.Catalog,
+			Framework:  cj.Framework,
+			Downloader: util.CachedDownloader{},
+		}
+		err = r.Generate(json_path, path)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -64,4 +88,6 @@ func init() {
 	repositoryInitCmd.Flags().StringVarP(&repoRelease, "release", "r", "latest", "desired release version")
 	repositoryInitCmd.Flags().StringVar(&repoGitRef, "gitref", "", "git ref to download a dev artifact")
 	repositoryInitCmd.Flags().MarkHidden("gitref")
+
+	repositoryCmd.AddCommand(repositoryGenerateCmd)
 }

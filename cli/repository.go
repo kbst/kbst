@@ -3,69 +3,113 @@ package cli
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/kbst/kbst/pkg/generator"
+	"github.com/kbst/kbst/pkg/stack"
 	"github.com/kbst/kbst/pkg/util"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type Repo struct {
+	Catalog    map[string]util.Entry
 	Framework  util.Entry
 	Downloader util.Downloader
 }
 
-func (r Repo) Init(starter string, release string, gitRef string, path string) (err error) {
-	// download archive
-	url, err := r.downloadUrl(starter, release, gitRef)
+func (r Repo) Init(starter string, baseDomain string, release string, gitRef string, path string) (err error) {
+	s := stack.Stack{
+		BaseDomain: baseDomain,
+		Environments: []stack.Environment{
+			{Key: "apps", IsBaseKey: true},
+			{Key: "ops", IsBaseKey: false},
+		},
+	}
+
+	filenames, err := r.extractArchive(starter, release, gitRef, path)
 	if err != nil {
 		return err
 	}
 
-	resp, err := r.Downloader.Download(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	// extract archive
-	archive, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	filenames, err := util.Unzip(archive, path)
-	if err != nil {
-		return err
+	switch starter {
+	case "aks":
+		r.starterAKS(&s)
+	case "eks":
+		r.starterEKS(&s)
+	case "gke":
+		r.starterGKE(&s)
+	case "multi-cloud":
+		r.starterMultiCloud(&s)
+	default:
+		return fmt.Errorf("unexpected error: starter: '%s' exists as archive, but has no starter func in CLI", starter)
 	}
 
-	// initialize git repository
+	// determine unzip target path
 	repoPath, err := filepath.Abs(filenames[0])
 	if err != nil {
 		return err
 	}
 
-	repo, err := git.PlainInit(repoPath, false)
+	// replace .tf files in repoPath with generated files
+	err = r.writeTerraform(repoPath, s)
 	if err != nil {
 		return err
 	}
 
-	// make initial commit
-	wt, err := repo.Worktree()
+	// initialize git repository
+	err = r.gitCommit(repoPath, fmt.Sprintf("Initialized from %s starter", strings.ToUpper(starter)))
 	if err != nil {
 		return err
 	}
 
-	copts := &git.CommitOptions{All: true}
-	msg := fmt.Sprintf("Initialized from %s starter", strings.ToUpper(starter))
+	return
+}
 
-	_, err = wt.Add(".")
+func (r Repo) Generate(json_path string, path string) (err error) {
+	f, err := ioutil.ReadFile(json_path)
 	if err != nil {
 		return err
 	}
 
-	_, err = wt.Commit(msg, copts)
+	ls := generator.LegacyStack{}
+	s, err := ls.Unmarshal(f)
+	if err != nil {
+		return err
+	}
+
+	sp := map[string]bool{}
+	for _, v := range ls.Modules {
+		sp[v.Provider] = true
+	}
+
+	starter := ls.Modules[0].GetK8sServiceName()
+	if len(sp) > 1 {
+		starter = "multi-cloud"
+	}
+
+	filenames, err := r.extractArchive(starter, "latest", "", path)
+	if err != nil {
+		return err
+	}
+
+	// determine unzip target path
+	repoPath, err := filepath.Abs(filenames[0])
+	if err != nil {
+		return err
+	}
+
+	// replace .tf files in repoPath with generated files
+	err = r.writeTerraform(repoPath, s)
+	if err != nil {
+		return err
+	}
+
+	// initialize git repository
+	err = r.gitCommit(repoPath, fmt.Sprintf("Initialized from %s starter", strings.ToUpper(starter)))
 	if err != nil {
 		return err
 	}
@@ -104,4 +148,168 @@ func (r Repo) downloadUrl(starter string, release string, gitRef string) (url st
 	}
 
 	return url, nil
+}
+
+func (r Repo) extractArchive(starter string, release string, gitRef string, path string) (filenames []string, err error) {
+	// download archive
+	url, err := r.downloadUrl(starter, release, gitRef)
+	if err != nil {
+		return filenames, err
+	}
+
+	resp, err := r.Downloader.Download(url)
+	if err != nil {
+		return filenames, err
+	}
+	defer resp.Body.Close()
+
+	// extract archive
+	archive, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return filenames, err
+	}
+
+	filenames, err = util.Unzip(archive, path)
+	if err != nil {
+		return filenames, err
+	}
+
+	return filenames, nil
+}
+
+func (r Repo) writeTerraform(repoPath string, s stack.Stack) error {
+	// replace .tf files in repoPath with generated files
+	glob := filepath.Join(repoPath, "*.tf")
+	contents, err := filepath.Glob(glob)
+	if err != nil {
+		return err
+	}
+	for _, item := range contents {
+		err = os.RemoveAll(item)
+		if err != nil {
+			return err
+		}
+	}
+
+	files, err := s.Files()
+	if err != nil {
+		return err
+	}
+
+	for n, d := range files {
+		p := filepath.Join(repoPath, n)
+		err = os.WriteFile(p, d.Bytes(), 0644)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r Repo) gitCommit(p string, msg string) error {
+	repo, err := git.PlainInit(p, false)
+	if err != nil {
+		return err
+	}
+
+	// make initial commit
+	wt, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	copts := &git.CommitOptions{All: true}
+
+	_, err = wt.Add(".")
+	if err != nil {
+		return err
+	}
+
+	_, err = wt.Commit(msg, copts)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r Repo) starterEKS(s *stack.Stack) {
+	version, _ := r.Framework.GetReleaseOrLatest("latest")
+
+	cfgs := stack.GenerateConfigurations(s.Environments, map[string]cty.Value{
+		"cluster_availability_zones": cty.StringVal("eu-west-1a,eu-west-1b,eu-west-1c"),
+		"cluster_desired_capacity":   cty.NumberIntVal(3),
+		"cluster_instance_type":      cty.StringVal("t3a.xlarge"),
+		"cluster_max_size":           cty.NumberIntVal(6),
+		"cluster_min_size":           cty.NumberIntVal(3),
+		"name_prefix":                cty.StringVal("kbst"),
+		"region":                     cty.StringVal("eu-west-1"),
+	})
+
+	c := stack.Cluster{
+		NamePrefix:     "kbst",
+		Provider:       "aws",
+		Region:         "eu-west-1",
+		Version:        version.Name,
+		Configurations: cfgs,
+	}
+
+	s.Clusters = append(s.Clusters, c)
+}
+
+func (r Repo) starterAKS(s *stack.Stack) {
+	version, _ := r.Framework.GetReleaseOrLatest("latest")
+
+	cfgs := stack.GenerateConfigurations(s.Environments, map[string]cty.Value{
+		"default_node_pool_max_count":  cty.NumberIntVal(6),
+		"default_node_pool_min_count":  cty.NumberIntVal(3),
+		"default_node_pool_node_count": cty.NumberIntVal(3),
+		"default_node_pool_vm_size":    cty.StringVal("Standard_D4_v4"),
+		"name_prefix":                  cty.StringVal("kbst"),
+		"region":                       cty.StringVal("westeurope"),
+		"resource_group":               cty.StringVal("terraform-kubestack-testing"),
+	})
+
+	c := stack.Cluster{
+		NamePrefix:     "kbst",
+		Provider:       "azurerm",
+		Region:         "westeurope",
+		Version:        version.Name,
+		Configurations: cfgs,
+	}
+
+	s.Clusters = append(s.Clusters, c)
+}
+
+func (r Repo) starterGKE(s *stack.Stack) {
+	version, _ := r.Framework.GetReleaseOrLatest("latest")
+
+	cfgs := stack.GenerateConfigurations(s.Environments, map[string]cty.Value{
+		"cluster_initial_node_count": cty.NumberIntVal(1),
+		"cluster_machine_type":       cty.StringVal("e2-standard-8"),
+		"cluster_max_node_count":     cty.NumberIntVal(3),
+		"cluster_min_master_version": cty.StringVal("1.20"),
+		"cluster_min_node_count":     cty.NumberIntVal(1),
+		"cluster_node_locations":     cty.StringVal("europe-west1-b,europe-west1-c,europe-west1-d"),
+		"name_prefix":                cty.StringVal("kbst"),
+		"project_id":                 cty.StringVal("terraform-kubestack-testing"),
+		"region":                     cty.StringVal("europe-west1"),
+	})
+
+	c := stack.Cluster{
+		NamePrefix:     "kbst",
+		Provider:       "google",
+		Region:         "europe-west1",
+		Version:        version.Name,
+		Configurations: cfgs,
+	}
+
+	s.Clusters = append(s.Clusters, c)
+}
+
+func (r Repo) starterMultiCloud(s *stack.Stack) {
+	r.starterAKS(s)
+	r.starterEKS(s)
+	r.starterGKE(s)
 }
