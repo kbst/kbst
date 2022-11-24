@@ -67,8 +67,9 @@ func ModuleNodePool(f *hclwrite.File, module_name string, cluster_provider strin
 			},
 		})
 
-		// hack: handle project_id traversal special case
-		configurations[0].Attributes["tfref_project_id"] = cty.StringVal(cluster_name)
+		// hack: handle traversal special cases
+		configurations[0].Attributes["_tfref_project_id"] = cty.StringVal(cluster_name)
+		configurations[0].Attributes["_tfref_location"] = cty.StringVal(cluster_name)
 	}
 
 	BlockModule(f, module_name, providers, source, "", attributes, configurations)

@@ -52,7 +52,7 @@ func TestRepoInit(t *testing.T) {
 	}
 
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
-	err := r.Init("multi-cloud", "kubestack.example.com", "latest", "", p)
+	err := r.Init("multi-cloud", "kubestack.example.com", []string{"apps", "ops"}, "latest", "", p)
 
 	assert.Equal(t, nil, err, nil)
 	assert.DirExists(t, filepath.Join(p, "kubestack-starter-multi-cloud"), nil)
@@ -70,7 +70,7 @@ func TestRepoInitGitRef(t *testing.T) {
 	}
 
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
-	err := r.Init("multi-cloud", "kubestack.example.com", "", "test", p)
+	err := r.Init("multi-cloud", "kubestack.example.com", []string{"apps", "ops"}, "", "test", p)
 
 	assert.Equal(t, nil, err, nil)
 	assert.DirExists(t, filepath.Join(p, "kubestack-starter-multi-cloud"), nil)
@@ -93,7 +93,7 @@ func TestRepoInitDownloadError(t *testing.T) {
 		Downloader: MockDownloaderArchiveError{},
 	}
 
-	err := r.Init("multi-cloud", "kubestack.example.com", "latest", "", "")
+	err := r.Init("multi-cloud", "kubestack.example.com", []string{"apps", "ops"}, "latest", "", "")
 
 	assert.Error(t, err, nil)
 }
@@ -105,7 +105,7 @@ func TestRepoInitNoSuchRelease(t *testing.T) {
 		Framework:  cj.Framework,
 		Downloader: MockDownloaderFrameworkArchive{},
 	}
-	err := r.Init("no-such-starter", "kubestack.example.com", "no-such-release", "", "")
+	err := r.Init("no-such-starter", "kubestack.example.com", []string{"apps", "ops"}, "no-such-release", "", "")
 
 	assert.EqualError(t, err, "'no-such-release' is not a valid version, try the latest version 'v0.11.0-beta.0'", nil)
 }
@@ -118,7 +118,7 @@ func TestRepoInitNoSuchStarter(t *testing.T) {
 		Downloader: MockDownloaderFrameworkArchive{},
 	}
 
-	err := r.Init("no-such-starter", "kubestack.example.com", "latest", "", "")
+	err := r.Init("no-such-starter", "kubestack.example.com", []string{"apps", "ops"}, "latest", "", "")
 
 	assert.EqualError(t, err, "'no-such-starter' is not a valid starter name, choose one of [aks eks gke kind multi-cloud]", nil)
 }

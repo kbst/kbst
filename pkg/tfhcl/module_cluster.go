@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func ModuleCluster(f *hclwrite.File, module_name string, cluster_provider string, cluster_name string, version string, configurations []Configuration) {
@@ -23,6 +24,9 @@ func ModuleCluster(f *hclwrite.File, module_name string, cluster_provider string
 	if cluster_provider == "google" {
 		providers["kubernetes"] = cluster_name
 	}
+
+	// hack: handle base_domain traversal special case
+	configurations[0].Attributes["_tfref_base_domain"] = cty.SetValEmpty(cty.String)
 
 	BlockModule(f, module_name, providers, source, "", map[string]hclwrite.Tokens{}, configurations)
 }

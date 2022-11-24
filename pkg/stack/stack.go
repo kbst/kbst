@@ -1,11 +1,14 @@
 package stack
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/kbst/kbst/pkg/tfhcl"
+	"github.com/kbst/kbst/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -13,6 +16,7 @@ import (
 
 type Stack struct {
 	root         *tfhcl.Root
+	cliJSON      util.CliJSON
 	BaseDomain   string
 	Environments []Environment
 	Clusters     []Cluster
@@ -30,9 +34,10 @@ type Configuration struct {
 	Attributes     map[string]cty.Value
 }
 
-func NewStack(r *tfhcl.Root) *Stack {
+func NewStack(r *tfhcl.Root, cj util.CliJSON) *Stack {
 	s := &Stack{
-		root: r,
+		root:    r,
+		cliJSON: cj,
 	}
 
 	return s
@@ -44,8 +49,12 @@ func (s *Stack) FromPath(p string) error {
 		return err
 	}
 
-	// TODO: parse TF variables and read base domain from vars
-	s.BaseDomain = "kubestack.example.com"
+	bd, exists := s.root.VariableValues["base_domain"]
+	if !exists {
+		return fmt.Errorf("value for required var %q not found", "base_domain")
+	}
+
+	s.BaseDomain = bd.AsString()
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
@@ -102,7 +111,7 @@ func (s *Stack) FromPath(p string) error {
 
 				clusterName, nameSuffix := parseNodePoolClusteNameNameSuffix(m.Name)
 				np := NodePool{
-					NameSuffix:  nameSuffix,
+					PoolName:    nameSuffix,
 					ClusterName: clusterName,
 					Provider:    provider,
 					Region:      region,
@@ -175,12 +184,189 @@ func (s *Stack) Files() (map[string]*hclwrite.File, error) {
 	return files, nil
 }
 
-func (s *Stack) AddCluster(namePrefix, provider, region, version string, configurations []Configuration) {
-	s.Clusters = append(s.Clusters, Cluster{
+func (s *Stack) WriteChanges() error {
+	existing := s.root.Parser.Sources()
+
+	current, err := s.Files()
+	if err != nil {
+		return err
+	}
+
+	//
+	//
+	// determine files to delete
+	toDelete := []string{}
+	for fn := range existing {
+		_, found := current[fn]
+		if !found {
+			toDelete = append(toDelete, fn)
+		}
+	}
+
+	//
+	//
+	// determine files to write
+	toWrite := []string{}
+	for fn, cd := range current {
+		// if the file does not exist yet
+		// or the data has changed
+		// add the name to the list of files to write
+		ed, found := existing[fn]
+		if !found || bytes.Equal(ed, cd.Bytes()) {
+			toWrite = append(toWrite, fn)
+		}
+	}
+
+	for _, fn := range toDelete {
+		err := os.Remove(fn)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, fn := range toWrite {
+		mode := os.FileMode(0644)
+		fi, err := os.Stat(fn)
+		if err == nil {
+			mode = fi.Mode()
+		}
+
+		err = os.WriteFile(fn, current[fn].Bytes(), mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Stack) AddCluster(namePrefix, provider, region, version string, configurations []Configuration) (err error) {
+	if version == "" {
+		version = "latest"
+	}
+
+	frameworkVersion, err := s.cliJSON.Framework.GetReleaseOrLatest(version)
+	if err != nil {
+		return err
+	}
+
+	nc := Cluster{
 		NamePrefix:     namePrefix,
+		Provider:       provider,
+		Region:         region,
+		Version:        frameworkVersion.Name,
+		Configurations: configurations,
+	}
+
+	nc.Validate(s.cliJSON)
+
+	s.Clusters = append(s.Clusters, nc)
+
+	return nil
+}
+
+func (s *Stack) AddNodePool(clusterName, nameSuffix string, configurations []Configuration) (err error) {
+	var provider, region, version string
+	for _, c := range s.Clusters {
+		if c.Name() == clusterName {
+			provider = c.Provider
+			region = c.Region
+			version = c.Version
+		}
+	}
+
+	if provider == "" || region == "" || version == "" {
+		return fmt.Errorf("no cluster named %q found", clusterName)
+	}
+
+	nnp := NodePool{
+		ClusterName:    clusterName,
+		PoolName:       nameSuffix,
 		Provider:       provider,
 		Region:         region,
 		Version:        version,
 		Configurations: configurations,
+	}
+
+	nnp.Validate(s.cliJSON)
+
+	s.NodePools = append(s.NodePools, nnp)
+
+	return nil
+}
+
+func (s *Stack) AddService(clusterName, entryName, version string) (err error) {
+	catalogEntry, found := s.cliJSON.Catalog[entryName]
+	if !found {
+		return fmt.Errorf("no entry named %q found in catalog", entryName)
+	}
+
+	if version == "" {
+		version = "latest"
+	}
+
+	catalogVersion, err := catalogEntry.GetReleaseOrLatest(version)
+	if err != nil {
+		return err
+	}
+
+	s.Services = append(s.Services, Service{
+		ClusterName:    clusterName,
+		EntryName:      entryName,
+		Provider:       "kustomization",
+		Version:        catalogVersion.Name,
+		Configurations: GenerateConfigurations(s.Environments, map[string]cty.Value{}),
 	})
+
+	return nil
+}
+
+func (s *Stack) Remove(rm string) error {
+	// if we're removing a cluster
+	for ic, c := range s.Clusters {
+		if c.Name() == rm {
+			if len(s.Clusters) == 1 {
+				return fmt.Errorf("stacks require one cluster, not removing %q", rm)
+			}
+
+			s.Clusters = slices.Delete(s.Clusters, ic, ic+1)
+
+			// if we are removing a cluster
+			// also remove all its node pools
+			for inp, np := range s.NodePools {
+				if np.ClusterName == rm {
+					s.NodePools = slices.Delete(s.NodePools, inp, inp+1)
+				}
+			}
+
+			// and services
+			for isvc, svc := range s.Services {
+				if svc.ClusterName == rm {
+					s.Services = slices.Delete(s.Services, isvc, isvc+1)
+				}
+			}
+
+			return nil
+		}
+	}
+
+	// if we're removing a node pool
+	for inp, np := range s.NodePools {
+		if np.Name() == rm {
+			s.NodePools = slices.Delete(s.NodePools, inp, inp+1)
+
+			return nil
+		}
+	}
+
+	// if we're removing a service
+	for isvc, svc := range s.Services {
+		if svc.Name() == rm {
+			s.Services = slices.Delete(s.Services, isvc, isvc+1)
+
+			return nil
+		}
+	}
+
+	return fmt.Errorf("error %q did not match any clusters, node pools or services", rm)
 }

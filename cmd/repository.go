@@ -17,44 +17,80 @@ package cmd
 
 import (
 	"log"
+	"strings"
 
 	"github.com/kbst/kbst/cli"
 	"github.com/kbst/kbst/pkg/util"
 	"github.com/spf13/cobra"
 )
 
-var repoRelease string
-var repoGitRef string
+var initRelease string
+var initGitRef string
+var initEnvNames string
 
 // repositoryCmd represents the repository command
 var repositoryCmd = &cobra.Command{
 	Use:     "repository",
 	Aliases: []string{"repo"},
 	Short:   "Create and change Kubestack repositories",
+	Hidden:  true,
 }
 
-// repositoryInitCmd represents the repository init command
-var repositoryInitCmd = &cobra.Command{
-	Use:   "init <starter> <base_domain>",
-	Short: "Scaffold a new repository",
-	Args:  cobra.ExactArgs(2),
+var initCmd = &cobra.Command{
+	Use:   "init <starter>",
+	Short: "Scaffold a new Kubestack repository",
+}
+
+var initAKSCmd = &cobra.Command{
+	Use:   "aks <base_domain>",
+	Short: "Scaffold a repository with one AKS cluster",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		starter := args[0]
-		baseDomain := args[1]
-		cj := util.CliJSON{}
-		err := cj.Load(util.CachedDownloader{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		r := cli.Repo{
-			Framework:  cj.Framework,
-			Downloader: util.CachedDownloader{},
-		}
-		err = r.Init(starter, baseDomain, repoRelease, repoGitRef, path)
-		if err != nil {
-			log.Fatal(err)
-		}
+		initStarter("aks", args[0])
 	},
+}
+
+var initEKSCmd = &cobra.Command{
+	Use:   "eks <base_domain>",
+	Short: "Scaffold a repository with one EKS cluster",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		initStarter("eks", args[0])
+	},
+}
+
+var initGKECmd = &cobra.Command{
+	Use:   "gke <base_domain>",
+	Short: "Scaffold a repository with one GKE cluster",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		initStarter("gke", args[0])
+	},
+}
+
+var initMultiCloudCmd = &cobra.Command{
+	Use:   "multi-cloud <base_domain>",
+	Short: "Scaffold a repository with one AKS, one EKS and one GKE cluster",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		initStarter("multi-cloud", args[0])
+	},
+}
+
+func initStarter(starter, baseDomain string) {
+	cj := util.CliJSON{}
+	err := cj.Load(util.CachedDownloader{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	r := cli.Repo{
+		Framework:  cj.Framework,
+		Downloader: util.CachedDownloader{},
+	}
+	err = r.Init(starter, baseDomain, strings.Split(initEnvNames, ","), initRelease, initGitRef, path)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 var repositoryGenerateCmd = &cobra.Command{
@@ -81,13 +117,27 @@ var repositoryGenerateCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.AddCommand(initCmd)
+
+	initCmd.PersistentFlags().StringVar(&initEnvNames, "environment-names", "apps,ops", "list of environment names, mission critical first")
+	initCmd.PersistentFlags().StringVarP(&initRelease, "release", "r", "latest", "desired release version")
+	initCmd.PersistentFlags().StringVar(&initGitRef, "gitref", "", "git ref to download a dev artifact")
+	initCmd.PersistentFlags().MarkHidden("gitref")
+
+	initCmd.AddCommand(initAKSCmd)
+	initAKSCmd.Flags().AddFlagSet(nodePoolAddAKSCmd.Flags())
+
+	initCmd.AddCommand(initEKSCmd)
+	initEKSCmd.Flags().AddFlagSet(nodePoolAddEKSCmd.Flags())
+
+	initCmd.AddCommand(initGKECmd)
+	initGKECmd.Flags().AddFlagSet(nodePoolAddGKECmd.Flags())
+
+	initCmd.AddCommand(initMultiCloudCmd)
+	initMultiCloudCmd.Flags().AddFlagSet(nodePoolAddAKSCmd.Flags())
+	initMultiCloudCmd.Flags().AddFlagSet(nodePoolAddEKSCmd.Flags())
+	initMultiCloudCmd.Flags().AddFlagSet(nodePoolAddGKECmd.Flags())
+
 	rootCmd.AddCommand(repositoryCmd)
-
-	repositoryCmd.AddCommand(repositoryInitCmd)
-
-	repositoryInitCmd.Flags().StringVarP(&repoRelease, "release", "r", "latest", "desired release version")
-	repositoryInitCmd.Flags().StringVar(&repoGitRef, "gitref", "", "git ref to download a dev artifact")
-	repositoryInitCmd.Flags().MarkHidden("gitref")
-
 	repositoryCmd.AddCommand(repositoryGenerateCmd)
 }

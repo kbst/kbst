@@ -21,13 +21,24 @@ type Repo struct {
 	Downloader util.Downloader
 }
 
-func (r Repo) Init(starter string, baseDomain string, release string, gitRef string, path string) (err error) {
+func (r Repo) Init(starter string, baseDomain string, envNames []string, release string, gitRef string, path string) (err error) {
+	var environments []stack.Environment
+
+	for _, en := range envNames {
+		isBaseKey := false
+		if en == envNames[0] {
+			isBaseKey = true
+		}
+
+		environments = append(environments, stack.Environment{
+			Key:       en,
+			IsBaseKey: isBaseKey,
+		})
+	}
+
 	s := stack.Stack{
-		BaseDomain: baseDomain,
-		Environments: []stack.Environment{
-			{Key: "apps", IsBaseKey: true},
-			{Key: "ops", IsBaseKey: false},
-		},
+		BaseDomain:   baseDomain,
+		Environments: environments,
 	}
 
 	filenames, err := r.extractArchive(starter, release, gitRef, path)

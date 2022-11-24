@@ -41,12 +41,13 @@ func configTokens(in map[string]cty.Value) (out []hclwrite.ObjectAttrTokens) {
 
 		kt := hclwrite.TokensForIdentifier(k)
 		switch k {
-		case "base_domain":
+		case "_tfref_base_domain":
+			kt = hclwrite.TokensForIdentifier("base_domain")
 			vt = hclwrite.TokensForTraversal(hcl.Traversal{
 				hcl.TraverseRoot{Name: "var"},
 				hcl.TraverseAttr{Name: "base_domain"},
 			})
-		case "tfref_project_id":
+		case "_tfref_project_id":
 			kt = hclwrite.TokensForIdentifier("project_id")
 			vt = hclwrite.TokensForTraversal(hcl.Traversal{
 				hcl.TraverseRoot{
@@ -57,6 +58,19 @@ func configTokens(in map[string]cty.Value) (out []hclwrite.ObjectAttrTokens) {
 				},
 				hcl.TraverseAttr{
 					Name: "current_config[\"project_id\"]",
+				},
+			})
+		case "_tfref_location":
+			kt = hclwrite.TokensForIdentifier("location")
+			vt = hclwrite.TokensForTraversal(hcl.Traversal{
+				hcl.TraverseRoot{
+					Name: "module",
+				},
+				hcl.TraverseAttr{
+					Name: in[k].AsString(),
+				},
+				hcl.TraverseAttr{
+					Name: "current_config[\"region\"]",
 				},
 			})
 		default:

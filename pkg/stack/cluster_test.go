@@ -4,8 +4,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/exp/maps"
 )
+
+var testCfgs []Configuration = []Configuration{
+	{
+		EnvironmentKey: "apps",
+		Attributes:     make(map[string]cty.Value),
+	},
+	{
+		EnvironmentKey: "ops",
+		Attributes:     make(map[string]cty.Value),
+	},
+}
 
 func TestClusterNameEKS(t *testing.T) {
 	c := Cluster{
@@ -13,7 +25,7 @@ func TestClusterNameEKS(t *testing.T) {
 		Provider:       "aws",
 		Region:         "test-region-1",
 		Version:        "test-version",
-		Configurations: []Configuration{},
+		Configurations: testCfgs,
 	}
 
 	n := c.Name()
@@ -27,7 +39,7 @@ func TestClusterNameAKS(t *testing.T) {
 		Provider:       "azurerm",
 		Region:         "test-continent",
 		Version:        "test-version",
-		Configurations: []Configuration{},
+		Configurations: testCfgs,
 	}
 
 	n := c.Name()
@@ -41,7 +53,7 @@ func TestClusterNameGKE(t *testing.T) {
 		Provider:       "google",
 		Region:         "test-region1",
 		Version:        "test-version",
-		Configurations: []Configuration{},
+		Configurations: testCfgs,
 	}
 
 	n := c.Name()
@@ -55,7 +67,7 @@ func TestClusterToHCL(t *testing.T) {
 		Provider:       "google",
 		Region:         "test-region1",
 		Version:        "test-version",
-		Configurations: []Configuration{},
+		Configurations: testCfgs,
 	}
 
 	files := c.ToHCL()

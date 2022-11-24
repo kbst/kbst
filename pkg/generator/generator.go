@@ -57,7 +57,7 @@ func (ls *LegacyStack) Unmarshal(d []byte) (s stack.Stack, err error) {
 			switch lcm.Type {
 			case "node_pool":
 				np := stack.NodePool{
-					NameSuffix:     getNodePoolSuffix(cbk, lcm.Configurations),
+					PoolName:       getNodePoolSuffix(cbk, lcm.Configurations),
 					ClusterName:    c.Name(),
 					Provider:       lcm.Provider,
 					Region:         region,

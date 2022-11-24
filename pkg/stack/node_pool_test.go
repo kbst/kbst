@@ -9,7 +9,7 @@ import (
 
 func TestNodePoolNameEKS(t *testing.T) {
 	np := NodePool{
-		NameSuffix:     "test-extra",
+		PoolName:       "test-extra",
 		ClusterName:    "eks_kbsteks_test-region-1",
 		Provider:       "aws",
 		Region:         "test-region",
@@ -24,7 +24,7 @@ func TestNodePoolNameEKS(t *testing.T) {
 
 func TestNodePoolNameAKS(t *testing.T) {
 	np := NodePool{
-		NameSuffix:     "test-extra",
+		PoolName:       "test-extra",
 		ClusterName:    "aks_kbstaks_test-continent",
 		Provider:       "azurerm",
 		Region:         "test-region",
@@ -39,7 +39,7 @@ func TestNodePoolNameAKS(t *testing.T) {
 
 func TestNodePoolNameGKE(t *testing.T) {
 	np := NodePool{
-		NameSuffix:     "test-extra",
+		PoolName:       "test-extra",
 		ClusterName:    "gke_kbstgke_test-region1",
 		Provider:       "azurerm",
 		Region:         "test-region",
@@ -54,7 +54,7 @@ func TestNodePoolNameGKE(t *testing.T) {
 
 func TestNodePoolToHCL(t *testing.T) {
 	np := NodePool{
-		NameSuffix:     "test-extra",
+		PoolName:       "test-extra",
 		ClusterName:    "gke_kbstgke_test-region1",
 		Provider:       "azurerm",
 		Region:         "test-region",

@@ -17,9 +17,9 @@ func TestBlockModuleClusterAKS(t *testing.T) {
 		{
 			EnvironmentKey: "apps",
 			Attributes: map[string]cty.Value{
-				"base_domain": cty.StringVal("replaced"),
-				"string":      cty.StringVal("testvalue"),
-				"number":      cty.NumberIntVal(5),
+				"_tfref_base_domain": cty.StringVal("replaced"),
+				"string":             cty.StringVal("testvalue"),
+				"number":             cty.NumberIntVal(5),
 			},
 		},
 		{

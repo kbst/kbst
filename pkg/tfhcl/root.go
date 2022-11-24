@@ -16,12 +16,12 @@ import (
 )
 
 type Root struct {
-	Parser      *hclparse.Parser
-	evalContext *hcl.EvalContext
-	Files       []TfHCLFile
-	Variables   map[string][]Variable
-	Modules     map[string][]Module
-	Providers   map[string][]Provider
+	Parser         *hclparse.Parser
+	evalContext    *hcl.EvalContext
+	Variables      map[string][]Variable
+	VariableValues map[string]cty.Value
+	Modules        map[string][]Module
+	Providers      map[string][]Provider
 }
 
 type TfHCLFile struct {
@@ -48,7 +48,6 @@ func (r *Root) Read(path string) (err error) {
 		return err
 	}
 
-	// loop for actual parsing
 	diags := hcl.Diagnostics{}
 	for _, f := range files {
 		if f.IsDir() {
@@ -86,11 +85,13 @@ func (r *Root) Read(path string) (err error) {
 			val, _ := mod.ConfigurationRaw.Value(r.evalContext)
 			mod.Configuration = make(map[string]map[string]cty.Value)
 
-			for k, v := range val.AsValueMap() {
-				mod.Configuration[k] = make(map[string]cty.Value)
+			if !val.IsNull() {
+				for k, v := range val.AsValueMap() {
+					mod.Configuration[k] = make(map[string]cty.Value)
 
-				for ik, iv := range v.AsValueMap() {
-					mod.Configuration[k][ik] = iv
+					for ik, iv := range v.AsValueMap() {
+						mod.Configuration[k][ik] = iv
+					}
 				}
 			}
 
@@ -106,6 +107,26 @@ func (r *Root) Read(path string) (err error) {
 			r.Providers[fp] = []Provider{}
 		}
 		r.Providers[fp] = append(r.Providers[fp], kb.Providers...)
+	}
+
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+
+		if f.Name() != "config.auto.tfvars" {
+			continue
+		}
+
+		fp := filepath.Join(path, f.Name())
+		hclf, diag := r.Parser.ParseHCLFile(fp)
+		diags.Extend(diag)
+
+		vv := make(map[string]cty.Value)
+		moreDiags := gohcl.DecodeBody(hclf.Body, nil, &vv)
+		diags = append(diags, moreDiags...)
+
+		r.VariableValues = vv
 	}
 
 	if diags.HasErrors() {

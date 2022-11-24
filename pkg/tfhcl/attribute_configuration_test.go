@@ -45,7 +45,7 @@ func TestConfigTokensNumber(t *testing.T) {
 
 func TestConfigTokensBaseDomain(t *testing.T) {
 	cfg := map[string]cty.Value{
-		"base_domain": cty.StringVal("should_be_replaced"),
+		"_tfref_base_domain": cty.StringVal("should_be_replaced"),
 	}
 
 	expAttrs := []hclwrite.ObjectAttrTokens{
