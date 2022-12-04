@@ -19,7 +19,7 @@ type Entry struct {
 
 func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
 	if len(e.Versions) < 1 {
-		return v, fmt.Errorf("No versions for '%s'", e.Name)
+		return v, fmt.Errorf("no versions for '%s'", e.Name)
 	}
 
 	v = e.Versions[0]

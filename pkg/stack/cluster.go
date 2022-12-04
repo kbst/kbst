@@ -41,6 +41,7 @@ func (c *Cluster) Validate(cj util.CliJSON) error {
 
 	switch c.Provider {
 	case "aws":
+		fmt.Printf("baseCfg: %+v\n", baseCfg)
 		instanceType = baseCfg["cluster_instance_type"].AsString()
 		zones = strings.Split(baseCfg["cluster_availability_zones"].AsString(), ",")
 	case "azurerm":

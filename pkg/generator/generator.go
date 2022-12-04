@@ -19,16 +19,16 @@ type LegacyStack struct {
 	BaseEnvironment string              `json:"base_environment"`
 	Environments    []LegacyEnvironment `json:"environments"`
 	Modules         []LegacyModule      `json:"modules"`
-	stack           stack.Stack
+	stack           *stack.Stack
 }
 
-func (ls *LegacyStack) Unmarshal(d []byte) (s stack.Stack, err error) {
+func (ls *LegacyStack) Unmarshal(d []byte) (s *stack.Stack, err error) {
 	err = json.Unmarshal(d, &ls)
 	if err != nil {
 		return s, err
 	}
 
-	s = stack.Stack{}
+	s = &stack.Stack{}
 	s.BaseDomain = ls.BaseDomain
 
 	cbk := ls.BaseEnvironment

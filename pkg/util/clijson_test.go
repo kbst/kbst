@@ -25,7 +25,7 @@ func TestGetReleaseOrLatestEmptyVersions(t *testing.T) {
 	emptyEntry := Entry{Name: "testEmpty", Versions: []Version{}}
 	v, err := emptyEntry.GetReleaseOrLatest("latest")
 	assert.Equal(t, Version{}, v, nil)
-	assert.Equal(t, fmt.Errorf("No versions for '%s'", emptyEntry.Name), err, nil)
+	assert.Equal(t, fmt.Errorf("no versions for '%s'", emptyEntry.Name), err, nil)
 }
 
 func TestGetReleaseOrLatestVersionLatest(t *testing.T) {

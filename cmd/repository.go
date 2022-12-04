@@ -22,6 +22,7 @@ import (
 	"github.com/kbst/kbst/cli"
 	"github.com/kbst/kbst/pkg/util"
 	"github.com/spf13/cobra"
+	"github.com/zclconf/go-cty/cty"
 )
 
 var initRelease string
@@ -42,42 +43,33 @@ var initCmd = &cobra.Command{
 }
 
 var initAKSCmd = &cobra.Command{
-	Use:   "aks <base_domain>",
+	Use:   "aks <base-domain> <name-prefix> <region> <resource-group>",
 	Short: "Scaffold a repository with one AKS cluster",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
-		initStarter("aks", args[0])
+		initStarter("aks", args)
 	},
 }
 
 var initEKSCmd = &cobra.Command{
-	Use:   "eks <base_domain>",
+	Use:   "eks <base-domain> <name-prefix> <region>",
 	Short: "Scaffold a repository with one EKS cluster",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		initStarter("eks", args[0])
+		initStarter("eks", args)
 	},
 }
 
 var initGKECmd = &cobra.Command{
-	Use:   "gke <base_domain>",
+	Use:   "gke <base-domain> <name-prefix> <region> <project-id>",
 	Short: "Scaffold a repository with one GKE cluster",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
-		initStarter("gke", args[0])
+		initStarter("gke", args)
 	},
 }
 
-var initMultiCloudCmd = &cobra.Command{
-	Use:   "multi-cloud <base_domain>",
-	Short: "Scaffold a repository with one AKS, one EKS and one GKE cluster",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		initStarter("multi-cloud", args[0])
-	},
-}
-
-func initStarter(starter, baseDomain string) {
+func initStarter(starter string, args []string) {
 	cj := util.CliJSON{}
 	err := cj.Load(util.CachedDownloader{})
 	if err != nil {
@@ -87,7 +79,61 @@ func initStarter(starter, baseDomain string) {
 		Framework:  cj.Framework,
 		Downloader: util.CachedDownloader{},
 	}
-	err = r.Init(starter, baseDomain, strings.Split(initEnvNames, ","), initRelease, initGitRef, path)
+
+	baseDomain := args[0]
+	namePrefix := args[1]
+	region := args[2]
+
+	var baseCfg map[string]cty.Value
+
+	switch starter {
+	case "aks":
+		zones := strings.Split(clusterAKSZones, ",")
+		if len(zones) == 0 {
+			zones = cj.CloudInfo.Zones("azurerm", region, clusterAKSInstanceType)
+		}
+
+		baseCfg = map[string]cty.Value{
+			"resource_group":               cty.StringVal(args[4]),
+			"default_node_pool_vm_size":    cty.StringVal(clusterAKSInstanceType),
+			"default_node_pool_min_count":  cty.NumberIntVal(clusterAKSMinNodes),
+			"default_node_pool_node_count": cty.NumberIntVal(clusterAKSMinNodes),
+			"default_node_pool_max_count":  cty.NumberIntVal(clusterAKSMaxNodes),
+			"availability_zones":           cty.StringVal(strings.Join(zones, ",")),
+		}
+	case "eks":
+		zones := strings.Split(clusterEKSZones, ",")
+		if len(zones) == 0 {
+			zones = cj.CloudInfo.Zones("aws", region, clusterEKSInstanceType)
+		}
+
+		baseCfg = map[string]cty.Value{
+			"cluster_availability_zones": cty.StringVal(strings.Join(zones, ",")),
+			"cluster_instance_type":      cty.StringVal(clusterEKSInstanceType),
+			"cluster_min_size":           cty.NumberIntVal(clusterEKSMinNodes),
+			"cluster_desired_capacity":   cty.NumberIntVal(clusterEKSMinNodes),
+			"cluster_max_size":           cty.NumberIntVal(clusterEKSMaxNodes),
+		}
+	case "gke":
+		zones := strings.Split(clusterGKEZones, ",")
+		if len(zones) == 0 {
+			zones = cj.CloudInfo.Zones("google", region, clusterGKEInstanceType)
+		}
+
+		baseCfg = map[string]cty.Value{
+			"project_id":                 cty.StringVal(args[4]),
+			"cluster_min_node_count":     cty.NumberIntVal(clusterGKEMinNodes),
+			"cluster_initial_node_count": cty.NumberIntVal(clusterGKEMinNodes),
+			"cluster_max_node_count":     cty.NumberIntVal(clusterGKEMaxNodes),
+			"cluster_node_locations":     cty.StringVal(strings.Join(zones, ",")),
+			"cluster_machine_type":       cty.StringVal(clusterGKEInstanceType),
+			"cluster_min_master_version": cty.StringVal("1.20"),
+		}
+	default:
+		log.Fatalf("unexpected error: starter: '%s' exists as archive, but is not implemented in CLI", starter)
+	}
+
+	err = r.Init(starter, baseDomain, namePrefix, region, strings.Split(initEnvNames, ","), baseCfg, initRelease, initGitRef, path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -119,24 +165,21 @@ var repositoryGenerateCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(initCmd)
 
+	initCmd.PersistentFlags().AddFlagSet(&sharedFlags)
 	initCmd.PersistentFlags().StringVar(&initEnvNames, "environment-names", "apps,ops", "list of environment names, mission critical first")
-	initCmd.PersistentFlags().StringVarP(&initRelease, "release", "r", "latest", "desired release version")
+
+	initCmd.PersistentFlags().StringVar(&initRelease, "release", "latest", "desired release version")
 	initCmd.PersistentFlags().StringVar(&initGitRef, "gitref", "", "git ref to download a dev artifact")
 	initCmd.PersistentFlags().MarkHidden("gitref")
 
 	initCmd.AddCommand(initAKSCmd)
-	initAKSCmd.Flags().AddFlagSet(nodePoolAddAKSCmd.Flags())
+	initAKSCmd.Flags().AddFlagSet(clusterAddAKSCmd.Flags())
 
 	initCmd.AddCommand(initEKSCmd)
-	initEKSCmd.Flags().AddFlagSet(nodePoolAddEKSCmd.Flags())
+	initEKSCmd.Flags().AddFlagSet(clusterAddEKSCmd.Flags())
 
 	initCmd.AddCommand(initGKECmd)
-	initGKECmd.Flags().AddFlagSet(nodePoolAddGKECmd.Flags())
-
-	initCmd.AddCommand(initMultiCloudCmd)
-	initMultiCloudCmd.Flags().AddFlagSet(nodePoolAddAKSCmd.Flags())
-	initMultiCloudCmd.Flags().AddFlagSet(nodePoolAddEKSCmd.Flags())
-	initMultiCloudCmd.Flags().AddFlagSet(nodePoolAddGKECmd.Flags())
+	initGKECmd.Flags().AddFlagSet(clusterAddGKECmd.Flags())
 
 	rootCmd.AddCommand(repositoryCmd)
 	repositoryCmd.AddCommand(repositoryGenerateCmd)

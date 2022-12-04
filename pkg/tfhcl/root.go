@@ -22,6 +22,7 @@ type Root struct {
 	VariableValues map[string]cty.Value
 	Modules        map[string][]Module
 	Providers      map[string][]Provider
+	Dockerfiles    map[string][]byte
 }
 
 type TfHCLFile struct {
@@ -35,6 +36,7 @@ func NewRoot() *Root {
 		Variables:   make(map[string][]Variable),
 		Modules:     make(map[string][]Module),
 		Providers:   make(map[string][]Provider),
+		Dockerfiles: make(map[string][]byte),
 	}
 	p := hclparse.NewParser()
 	r.Parser = p
@@ -134,6 +136,12 @@ func (r *Root) Read(path string) (err error) {
 			fmt.Printf("issue parsing hcl: %s\n", diag.Error())
 		}
 		return diags.Errs()[0]
+	}
+
+	dfPath := filepath.Join(path, "Dockerfile")
+	dfData, err := os.ReadFile(dfPath)
+	if err == nil {
+		r.Dockerfiles[dfPath] = dfData
 	}
 
 	return nil

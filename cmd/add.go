@@ -23,38 +23,41 @@ import (
 	"github.com/kbst/kbst/pkg/tfhcl"
 	"github.com/kbst/kbst/pkg/util"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/zclconf/go-cty/cty"
 )
 
-var clusterRelease string
-var clusterGitRef string
+var sharedFlags pflag.FlagSet
+
+var clusterNamePrefix string
+var clusterRegion string
 
 var clusterAKSInstanceType string
 var clusterAKSMinNodes int64
 var clusterAKSMaxNodes int64
-var clusterAKSZones []string
+var clusterAKSZones string
 
 var clusterEKSInstanceType string
 var clusterEKSMinNodes int64
 var clusterEKSMaxNodes int64
-var clusterEKSZones []string
+var clusterEKSZones string
 
 var clusterGKEInstanceType string
 var clusterGKEMinNodes int64
 var clusterGKEMaxNodes int64
-var clusterGKEZones []string
+var clusterGKEZones string
 
 var nodePoolAKSInstanceType string
 var nodePoolAKSMinNodes int64
 var nodePoolAKSMaxNodes int64
 var nodePoolAKSDiskSize int64
-var nodePoolAKSZones []string
+var nodePoolAKSZones string
 
 var nodePoolEKSInstanceType string
 var nodePoolEKSMinNodes int64
 var nodePoolEKSMaxNodes int64
 var nodePoolEKSDiskSize int64
-var nodePoolEKSZones []string
+var nodePoolEKSZones string
 var nodePoolEKSAMIType string
 
 var nodePoolGKEInstanceType string
@@ -63,7 +66,7 @@ var nodePoolGKEMinNodes int64
 var nodePoolGKEMaxNodes int64
 var nodePoolGKEDiskType string
 var nodePoolGKEDiskSize int64
-var nodePoolGKEZones []string
+var nodePoolGKEZones string
 
 var serviceRelease string
 var serviceClusterName string
@@ -101,7 +104,7 @@ var clusterAddAKSCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		zones := clusterAKSZones
+		zones := strings.Split(clusterAKSZones, ",")
 		if len(zones) == 0 {
 			zones = cj.CloudInfo.Zones("azurerm", region, clusterAKSInstanceType)
 		}
@@ -148,7 +151,7 @@ var clusterAddEKSCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		zones := clusterEKSZones
+		zones := strings.Split(clusterEKSZones, ",")
 		if len(zones) == 0 {
 			zones = cj.CloudInfo.Zones("aws", region, clusterEKSInstanceType)
 		}
@@ -195,7 +198,7 @@ var clusterAddGKECmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		zones := clusterGKEZones
+		zones := strings.Split(clusterGKEZones, ",")
 		if len(zones) == 0 {
 			zones = cj.CloudInfo.Zones("google", region, clusterGKEInstanceType)
 		}
@@ -258,7 +261,7 @@ var nodePoolAddAKSCmd = &cobra.Command{
 		}
 
 		if len(nodePoolAKSZones) > 0 {
-			baseCfg["availability_zones "] = cty.StringVal(strings.Join(nodePoolAKSZones, ","))
+			baseCfg["availability_zones "] = cty.StringVal(nodePoolAKSZones)
 		}
 
 		if nodePoolAKSDiskSize != 0 {
@@ -307,7 +310,7 @@ var nodePoolAddEKSCmd = &cobra.Command{
 		}
 
 		if len(nodePoolEKSZones) > 0 {
-			baseCfg["availability_zones "] = cty.StringVal(strings.Join(nodePoolEKSZones, ","))
+			baseCfg["availability_zones "] = cty.StringVal(nodePoolEKSZones)
 		}
 
 		if nodePoolEKSAMIType != "" {
@@ -361,7 +364,7 @@ var nodePoolAddGKECmd = &cobra.Command{
 
 		var zones []cty.Value
 		if len(nodePoolGKEZones) > 0 {
-			for _, z := range nodePoolGKEZones {
+			for _, z := range strings.Split(nodePoolGKEZones, ",") {
 				zones = append(zones, cty.StringVal(z))
 			}
 			baseCfg["node_locations"] = cty.ListVal(zones)
@@ -435,29 +438,30 @@ var serviceAddCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(addCmd)
 
+	sharedFlags.StringVarP(&clusterNamePrefix, "name-prefix", "n", "", "cluster name prefix")
+	sharedFlags.StringVarP(&clusterRegion, "region", "r", "", "cluster region")
+
 	// Clusters
 	addCmd.AddCommand(clusterAddCmd)
-	clusterAddCmd.PersistentFlags().StringVarP(&clusterRelease, "release", "r", "latest", "desired release version")
-	clusterAddCmd.PersistentFlags().StringVar(&clusterGitRef, "gitref", "", "git ref to download a dev artifact")
-	clusterAddCmd.PersistentFlags().MarkHidden("gitref")
+	clusterAddCmd.PersistentFlags().AddFlagSet(&sharedFlags)
 
 	clusterAddCmd.AddCommand(clusterAddAKSCmd)
 	clusterAddAKSCmd.Flags().StringVar(&clusterAKSInstanceType, "aks-vm-size", "Standard_D2_v4", "vm size of nodes")
 	clusterAddAKSCmd.Flags().Int64Var(&clusterAKSMinNodes, "aks-min", 3, "min number of nodes")
 	clusterAddAKSCmd.Flags().Int64Var(&clusterAKSMaxNodes, "aks-max", 9, "max number of nodes")
-	clusterAddAKSCmd.Flags().StringArrayVar(&clusterAKSZones, "aks-availability-zones", []string{}, "zones to use for nodes (default 3 zones from the cluster's region)")
+	clusterAddAKSCmd.Flags().StringVar(&clusterAKSZones, "aks-availability-zones", "", "zones to use for nodes (default inherit cluster zones)")
 
 	clusterAddCmd.AddCommand(clusterAddEKSCmd)
 	clusterAddEKSCmd.Flags().StringVar(&clusterEKSInstanceType, "eks-instance-type", "t3a.xlarge", "instance type of nodes")
 	clusterAddEKSCmd.Flags().Int64Var(&clusterEKSMinNodes, "eks-min", 3, "min number of nodes")
 	clusterAddEKSCmd.Flags().Int64Var(&clusterEKSMaxNodes, "eks-max", 9, "max number of nodes")
-	clusterAddEKSCmd.Flags().StringArrayVar(&clusterEKSZones, "eks-availability-zones", []string{}, "zones to use for nodes (default 3 zones from the cluster's region)")
+	clusterAddEKSCmd.Flags().StringVar(&clusterEKSZones, "eks-availability-zones", "", "zones to use for nodes (default inherit cluster zones)")
 
 	clusterAddCmd.AddCommand(clusterAddGKECmd)
 	clusterAddGKECmd.Flags().StringVar(&clusterGKEInstanceType, "gke-machine-type", "e2-standard-8", "machine type of nodes")
 	clusterAddGKECmd.Flags().Int64Var(&clusterGKEMinNodes, "gke-min", 1, "min number of nodes per zone")
 	clusterAddGKECmd.Flags().Int64Var(&clusterGKEMaxNodes, "gke-max", 3, "max number of nodes per zone")
-	clusterAddGKECmd.Flags().StringArrayVar(&clusterGKEZones, "gke-node-locations", []string{}, "zones to use for nodes (default 3 zones from the cluster's region)")
+	clusterAddGKECmd.Flags().StringVar(&clusterGKEZones, "gke-node-locations", "", "zones to use for nodes (default inherit cluster zones)")
 
 	// Node Pools
 	addCmd.AddCommand(nodePoolAddCmd)
@@ -467,14 +471,14 @@ func init() {
 	nodePoolAddAKSCmd.Flags().Int64Var(&nodePoolAKSMinNodes, "aks-min", 3, "min number of nodes")
 	nodePoolAddAKSCmd.Flags().Int64Var(&nodePoolAKSMaxNodes, "aks-max", 9, "max number of nodes")
 	nodePoolAddAKSCmd.Flags().Int64Var(&nodePoolAKSDiskSize, "aks-disk-size", 0, "disk size of nodes in GB")
-	nodePoolAddAKSCmd.Flags().StringArrayVar(&nodePoolAKSZones, "aks-availability-zones", []string{}, "zones to use for nodes (default 3 zones from the cluster's region)")
+	nodePoolAddAKSCmd.Flags().StringVar(&nodePoolAKSZones, "aks-availability-zones", "", "zones to use for nodes (default 3 zones from the cluster's region)")
 
 	nodePoolAddCmd.AddCommand(nodePoolAddEKSCmd)
 	nodePoolAddEKSCmd.Flags().StringVar(&nodePoolEKSInstanceType, "eks-instance-type", "t3a.xlarge", "instance type of nodes")
 	nodePoolAddEKSCmd.Flags().Int64Var(&nodePoolEKSMinNodes, "eks-min", 3, "min number of nodes")
 	nodePoolAddEKSCmd.Flags().Int64Var(&nodePoolEKSMaxNodes, "eks-max", 9, "max number of nodes")
 	nodePoolAddEKSCmd.Flags().Int64Var(&nodePoolEKSDiskSize, "eks-disk-size", 0, "disk size of nodes in GB")
-	nodePoolAddEKSCmd.Flags().StringArrayVar(&nodePoolEKSZones, "eks-availability-zones", []string{}, "zones to use for nodes (default 3 zones from the cluster's region)")
+	nodePoolAddEKSCmd.Flags().StringVar(&nodePoolEKSZones, "eks-availability-zones", "", "zones to use for nodes (default 3 zones from the cluster's region)")
 	nodePoolAddEKSCmd.Flags().StringVar(&nodePoolEKSAMIType, "eks-ami-type", "", "AMI type of nodes (default EKS)")
 
 	nodePoolAddCmd.AddCommand(nodePoolAddGKECmd)
@@ -484,7 +488,7 @@ func init() {
 	nodePoolAddGKECmd.Flags().Int64Var(&nodePoolGKEMaxNodes, "gke-max", 3, "max number of nodes per zone")
 	nodePoolAddGKECmd.Flags().StringVar(&nodePoolGKEDiskType, "gke-disk-type", "", "disk type of nodes")
 	nodePoolAddGKECmd.Flags().Int64Var(&nodePoolGKEDiskSize, "gke-disk-size", 0, "disk size of nodes in GB")
-	nodePoolAddGKECmd.Flags().StringArrayVar(&nodePoolGKEZones, "gke-node-locations", []string{}, "zones to use for nodes (default cluster's zones)")
+	nodePoolAddGKECmd.Flags().StringVar(&nodePoolGKEZones, "gke-node-locations", "", "zones to use for nodes (default cluster's zones)")
 
 	// Services
 	addCmd.AddCommand(serviceAddCmd)

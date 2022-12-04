@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kbst/kbst/pkg/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type MockDownloaderCliJson struct{}
@@ -31,7 +33,8 @@ func (c MockDownloaderCliJson) Download(url string) (resp *http.Response, err er
 type MockDownloaderFrameworkArchive struct{}
 
 func (c MockDownloaderFrameworkArchive) Download(url string) (resp *http.Response, err error) {
-	p := filepath.Join(fixturesPath, "kubestack-starter-multi-cloud-v0.11.0-beta.0.zip")
+	fn := strings.Split(url, "/")[4]
+	p := filepath.Join(fixturesPath, fn)
 	f, err := ioutil.ReadFile(p)
 	if err != nil {
 		return resp, err
@@ -43,7 +46,7 @@ func (c MockDownloaderFrameworkArchive) Download(url string) (resp *http.Respons
 	return r, nil
 }
 
-func TestRepoInit(t *testing.T) {
+func TestRepoInitEKS(t *testing.T) {
 	cj := util.CliJSON{}
 	cj.Load(MockDownloaderCliJson{})
 	r := Repo{
@@ -51,17 +54,25 @@ func TestRepoInit(t *testing.T) {
 		Downloader: MockDownloaderFrameworkArchive{},
 	}
 
+	baseCfg := map[string]cty.Value{
+		"cluster_availability_zones": cty.StringVal("eu-west-1a,eu-west-1b,eu-west-1c"),
+		"cluster_instance_type":      cty.StringVal("m5a.2xlarge"),
+		"cluster_min_size":           cty.NumberIntVal(3),
+		"cluster_desired_capacity":   cty.NumberIntVal(3),
+		"cluster_max_size":           cty.NumberIntVal(9),
+	}
+
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
-	err := r.Init("multi-cloud", "kubestack.example.com", []string{"apps", "ops"}, "latest", "", p)
+	err := r.Init("eks", "kubestack.example.com", "test", "eu-west-1", []string{"apps", "ops"}, baseCfg, "latest", "", p)
 
 	assert.Equal(t, nil, err, nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-multi-cloud"), nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-multi-cloud", ".git"), nil)
+	assert.DirExists(t, filepath.Join(p, "kubestack-starter-eks"), nil)
+	assert.DirExists(t, filepath.Join(p, "kubestack-starter-eks", ".git"), nil)
 
 	os.RemoveAll(p)
 }
 
-func TestRepoInitGitRef(t *testing.T) {
+func TestRepoInitGKE(t *testing.T) {
 	cj := util.CliJSON{}
 	cj.Load(MockDownloaderCliJson{})
 	r := Repo{
@@ -69,12 +80,49 @@ func TestRepoInitGitRef(t *testing.T) {
 		Downloader: MockDownloaderFrameworkArchive{},
 	}
 
+	baseCfg := map[string]cty.Value{
+		"project_id":                 cty.StringVal("kubestack-testing"),
+		"cluster_min_node_count":     cty.NumberIntVal(1),
+		"cluster_initial_node_count": cty.NumberIntVal(1),
+		"cluster_max_node_count":     cty.NumberIntVal(3),
+		"cluster_node_locations":     cty.StringVal("europe-west4-a,europe-west4-b,europe-west4-c"),
+		"cluster_machine_type":       cty.StringVal("e2-standard-8"),
+		"cluster_min_master_version": cty.StringVal("1.20"),
+	}
+
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
-	err := r.Init("multi-cloud", "kubestack.example.com", []string{"apps", "ops"}, "", "test", p)
+	err := r.Init("gke", "kubestack.example.com", "test", "europe-west4", []string{"apps", "ops"}, baseCfg, "latest", "", p)
 
 	assert.Equal(t, nil, err, nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-multi-cloud"), nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-multi-cloud", ".git"), nil)
+	assert.DirExists(t, filepath.Join(p, "kubestack-starter-gke"), nil)
+	assert.DirExists(t, filepath.Join(p, "kubestack-starter-gke", ".git"), nil)
+
+	os.RemoveAll(p)
+}
+
+func TestRepoInitAKS(t *testing.T) {
+	cj := util.CliJSON{}
+	cj.Load(MockDownloaderCliJson{})
+	r := Repo{
+		Framework:  cj.Framework,
+		Downloader: MockDownloaderFrameworkArchive{},
+	}
+
+	baseCfg := map[string]cty.Value{
+		"resource_group":               cty.StringVal("kubestack-testing"),
+		"default_node_pool_vm_size":    cty.StringVal("Standard_D4_v4"),
+		"default_node_pool_min_count":  cty.NumberIntVal(3),
+		"default_node_pool_node_count": cty.NumberIntVal(3),
+		"default_node_pool_max_count":  cty.NumberIntVal(9),
+		"availability_zones":           cty.StringVal("1,2,3"),
+	}
+
+	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
+	err := r.Init("aks", "kubestack.example.com", "test", "westeurope", []string{"apps", "ops"}, baseCfg, "latest", "", p)
+
+	assert.Equal(t, nil, err, nil)
+	assert.DirExists(t, filepath.Join(p, "kubestack-starter-aks"), nil)
+	assert.DirExists(t, filepath.Join(p, "kubestack-starter-aks", ".git"), nil)
 
 	os.RemoveAll(p)
 }
@@ -93,7 +141,7 @@ func TestRepoInitDownloadError(t *testing.T) {
 		Downloader: MockDownloaderArchiveError{},
 	}
 
-	err := r.Init("multi-cloud", "kubestack.example.com", []string{"apps", "ops"}, "latest", "", "")
+	err := r.Init("aks", "kubestack.example.com", "test", "europe-west4", []string{"apps", "ops"}, map[string]cty.Value{}, "latest", "", "")
 
 	assert.Error(t, err, nil)
 }
@@ -105,9 +153,9 @@ func TestRepoInitNoSuchRelease(t *testing.T) {
 		Framework:  cj.Framework,
 		Downloader: MockDownloaderFrameworkArchive{},
 	}
-	err := r.Init("no-such-starter", "kubestack.example.com", []string{"apps", "ops"}, "no-such-release", "", "")
+	err := r.Init("no-such-starter", "kubestack.example.com", "test", "europe-west4", []string{"apps", "ops"}, map[string]cty.Value{}, "no-such-release", "", "")
 
-	assert.EqualError(t, err, "'no-such-release' is not a valid version, try the latest version 'v0.11.0-beta.0'", nil)
+	assert.EqualError(t, err, "'no-such-release' is not a valid version, try the latest version 'v0.18.0-beta.0'", nil)
 }
 
 func TestRepoInitNoSuchStarter(t *testing.T) {
@@ -118,7 +166,7 @@ func TestRepoInitNoSuchStarter(t *testing.T) {
 		Downloader: MockDownloaderFrameworkArchive{},
 	}
 
-	err := r.Init("no-such-starter", "kubestack.example.com", []string{"apps", "ops"}, "latest", "", "")
+	err := r.Init("no-such-starter", "kubestack.example.com", "test", "europe-west4", []string{"apps", "ops"}, map[string]cty.Value{}, "latest", "", "")
 
 	assert.EqualError(t, err, "'no-such-starter' is not a valid starter name, choose one of [aks eks gke kind multi-cloud]", nil)
 }

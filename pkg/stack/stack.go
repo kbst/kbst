@@ -163,21 +163,18 @@ func (s *Stack) Files() (map[string]*hclwrite.File, error) {
 	for _, c := range s.Clusters {
 		for k, v := range c.ToHCL() {
 			files[k] = v
-			//fmt.Printf("%s: %s\n", k, v.Bytes())
 		}
 	}
 
 	for _, np := range s.NodePools {
 		for k, v := range np.ToHCL() {
 			files[k] = v
-			//fmt.Printf("%s: %s\n", k, v.Bytes())
 		}
 	}
 
 	for _, svc := range s.Services {
 		for k, v := range svc.ToHCL() {
 			files[k] = v
-			//fmt.Printf("%s: %s\n", k, v.Bytes())
 		}
 	}
 
@@ -206,14 +203,22 @@ func (s *Stack) WriteChanges() error {
 	//
 	//
 	// determine files to write
-	toWrite := []string{}
+	toWrite := make(map[string][]byte)
 	for fn, cd := range current {
 		// if the file does not exist yet
 		// or the data has changed
 		// add the name to the list of files to write
 		ed, found := existing[fn]
-		if !found || bytes.Equal(ed, cd.Bytes()) {
-			toWrite = append(toWrite, fn)
+		if !found || !bytes.Equal(ed, cd.Bytes()) {
+			toWrite[fn] = cd.Bytes()
+		}
+	}
+
+	// write Dockerfile if changed
+	for fn, ed := range s.root.Dockerfiles {
+		cd := dockerfile(ed, s.Clusters)
+		if !bytes.Equal(ed, cd) {
+			toWrite[fn] = cd
 		}
 	}
 
@@ -224,14 +229,14 @@ func (s *Stack) WriteChanges() error {
 		}
 	}
 
-	for _, fn := range toWrite {
+	for fn, fd := range toWrite {
 		mode := os.FileMode(0644)
 		fi, err := os.Stat(fn)
 		if err == nil {
 			mode = fi.Mode()
 		}
 
-		err = os.WriteFile(fn, current[fn].Bytes(), mode)
+		err = os.WriteFile(fn, fd, mode)
 		if err != nil {
 			return err
 		}

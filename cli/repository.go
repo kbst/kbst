@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/kbst/kbst/pkg/generator"
 	"github.com/kbst/kbst/pkg/stack"
+	"github.com/kbst/kbst/pkg/tfhcl"
 	"github.com/kbst/kbst/pkg/util"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -21,7 +23,7 @@ type Repo struct {
 	Downloader util.Downloader
 }
 
-func (r Repo) Init(starter string, baseDomain string, envNames []string, release string, gitRef string, path string) (err error) {
+func (r Repo) Init(starter string, baseDomain string, namePrefix string, region string, envNames []string, baseCfg map[string]cty.Value, release string, gitRef string, path string) (err error) {
 	var environments []stack.Environment
 
 	for _, en := range envNames {
@@ -36,10 +38,19 @@ func (r Repo) Init(starter string, baseDomain string, envNames []string, release
 		})
 	}
 
-	s := stack.Stack{
-		BaseDomain:   baseDomain,
-		Environments: environments,
+	cj := util.CliJSON{}
+	err = cj.Load(util.CachedDownloader{})
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	s := stack.NewStack(tfhcl.NewRoot(), cj)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s.BaseDomain = baseDomain
+	s.Environments = environments
 
 	filenames, err := r.extractArchive(starter, release, gitRef, path)
 	if err != nil {
@@ -48,15 +59,16 @@ func (r Repo) Init(starter string, baseDomain string, envNames []string, release
 
 	switch starter {
 	case "aks":
-		r.starterAKS(&s)
+		err = s.AddCluster(namePrefix, "azurerm", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
 	case "eks":
-		r.starterEKS(&s)
+		err = s.AddCluster(namePrefix, "aws", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
 	case "gke":
-		r.starterGKE(&s)
-	case "multi-cloud":
-		r.starterMultiCloud(&s)
+		err = s.AddCluster(namePrefix, "google", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
 	default:
-		return fmt.Errorf("unexpected error: starter: '%s' exists as archive, but has no starter func in CLI", starter)
+		return fmt.Errorf("unexpected error: starter: '%s' exists as archive, but is not implemented in CLI", starter)
+	}
+	if err != nil {
+		return err
 	}
 
 	// determine unzip target path
@@ -188,7 +200,7 @@ func (r Repo) extractArchive(starter string, release string, gitRef string, path
 	return filenames, nil
 }
 
-func (r Repo) writeTerraform(repoPath string, s stack.Stack) error {
+func (r Repo) writeTerraform(repoPath string, s *stack.Stack) error {
 	// replace .tf files in repoPath with generated files
 	glob := filepath.Join(repoPath, "*.tf")
 	contents, err := filepath.Glob(glob)
@@ -243,84 +255,4 @@ func (r Repo) gitCommit(p string, msg string) error {
 	}
 
 	return nil
-}
-
-func (r Repo) starterEKS(s *stack.Stack) {
-	version, _ := r.Framework.GetReleaseOrLatest("latest")
-
-	cfgs := stack.GenerateConfigurations(s.Environments, map[string]cty.Value{
-		"cluster_availability_zones": cty.StringVal("eu-west-1a,eu-west-1b,eu-west-1c"),
-		"cluster_desired_capacity":   cty.NumberIntVal(3),
-		"cluster_instance_type":      cty.StringVal("t3a.xlarge"),
-		"cluster_max_size":           cty.NumberIntVal(6),
-		"cluster_min_size":           cty.NumberIntVal(3),
-		"name_prefix":                cty.StringVal("kbst"),
-		"region":                     cty.StringVal("eu-west-1"),
-	})
-
-	c := stack.Cluster{
-		NamePrefix:     "kbst",
-		Provider:       "aws",
-		Region:         "eu-west-1",
-		Version:        version.Name,
-		Configurations: cfgs,
-	}
-
-	s.Clusters = append(s.Clusters, c)
-}
-
-func (r Repo) starterAKS(s *stack.Stack) {
-	version, _ := r.Framework.GetReleaseOrLatest("latest")
-
-	cfgs := stack.GenerateConfigurations(s.Environments, map[string]cty.Value{
-		"default_node_pool_max_count":  cty.NumberIntVal(6),
-		"default_node_pool_min_count":  cty.NumberIntVal(3),
-		"default_node_pool_node_count": cty.NumberIntVal(3),
-		"default_node_pool_vm_size":    cty.StringVal("Standard_D4_v4"),
-		"name_prefix":                  cty.StringVal("kbst"),
-		"region":                       cty.StringVal("westeurope"),
-		"resource_group":               cty.StringVal("terraform-kubestack-testing"),
-	})
-
-	c := stack.Cluster{
-		NamePrefix:     "kbst",
-		Provider:       "azurerm",
-		Region:         "westeurope",
-		Version:        version.Name,
-		Configurations: cfgs,
-	}
-
-	s.Clusters = append(s.Clusters, c)
-}
-
-func (r Repo) starterGKE(s *stack.Stack) {
-	version, _ := r.Framework.GetReleaseOrLatest("latest")
-
-	cfgs := stack.GenerateConfigurations(s.Environments, map[string]cty.Value{
-		"cluster_initial_node_count": cty.NumberIntVal(1),
-		"cluster_machine_type":       cty.StringVal("e2-standard-8"),
-		"cluster_max_node_count":     cty.NumberIntVal(3),
-		"cluster_min_master_version": cty.StringVal("1.20"),
-		"cluster_min_node_count":     cty.NumberIntVal(1),
-		"cluster_node_locations":     cty.StringVal("europe-west1-b,europe-west1-c,europe-west1-d"),
-		"name_prefix":                cty.StringVal("kbst"),
-		"project_id":                 cty.StringVal("terraform-kubestack-testing"),
-		"region":                     cty.StringVal("europe-west1"),
-	})
-
-	c := stack.Cluster{
-		NamePrefix:     "kbst",
-		Provider:       "google",
-		Region:         "europe-west1",
-		Version:        version.Name,
-		Configurations: cfgs,
-	}
-
-	s.Clusters = append(s.Clusters, c)
-}
-
-func (r Repo) starterMultiCloud(s *stack.Stack) {
-	r.starterAKS(s)
-	r.starterEKS(s)
-	r.starterGKE(s)
 }
