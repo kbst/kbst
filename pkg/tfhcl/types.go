@@ -11,6 +11,11 @@ type Blocks struct {
 	Variables []Variable  `hcl:"variable,block"`
 	Terraform []Terraform `hcl:"terraform,block"`
 	Locals    []Locals    `hcl:"locals,block"`
+
+	// kubestack unused
+	Resources   []Resource   `hcl:"resource,block"`
+	DataSources []DataSource `hcl:"data,block"`
+	Output      []Output     `hcl:"output,block"`
 }
 
 type Module struct {
@@ -55,5 +60,22 @@ type Backend struct {
 }
 
 type Locals struct {
+	Body hcl.Body `hcl:",remain"`
+}
+
+type Resource struct {
+	Type string   `hcl:"type,label"`
+	Name string   `hcl:"name,label"`
+	Body hcl.Body `hcl:",remain"`
+}
+
+type DataSource struct {
+	Type string   `hcl:"type,label"`
+	Name string   `hcl:"name,label"`
+	Body hcl.Body `hcl:",remain"`
+}
+
+type Output struct {
+	Name string   `hcl:"name,label"`
 	Body hcl.Body `hcl:",remain"`
 }
