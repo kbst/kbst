@@ -7,10 +7,16 @@ import (
 )
 
 func TestParsePrefixRegion(t *testing.T) {
-	p, r := parsePrefixRegion("test_prefix_region")
+	p, r, _ := parsePrefixRegion("test_prefix_region")
 
 	assert.Equal(t, "prefix", p)
 	assert.Equal(t, "region", r)
+}
+
+func TestParsePrefixRegionError(t *testing.T) {
+	_, _, err := parsePrefixRegion("test_invalid")
+
+	assert.Error(t, err)
 }
 
 // EKS

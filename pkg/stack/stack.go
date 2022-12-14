@@ -3,6 +3,7 @@ package stack
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 
@@ -58,7 +59,12 @@ func (s *Stack) FromPath(p string) error {
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
-			prefix, region := parsePrefixRegion(m.Name)
+			prefix, region, err := parsePrefixRegion(m.Name)
+			if err != nil {
+				log.Printf("ignoring module: %q: %s", m.Name, err)
+				continue
+			}
+
 			kind, provider, version := parseKindProviderVersion(m.Source, m.Version)
 			cbk := m.ConfigurationBaseKey
 			if cbk == "" {
@@ -102,13 +108,6 @@ func (s *Stack) FromPath(p string) error {
 
 				s.Clusters = append(s.Clusters, c)
 			case "node_pool":
-				_, region := parsePrefixRegion(m.Name)
-				_, provider, version := parseKindProviderVersion(m.Source, m.Version)
-				cbk := m.ConfigurationBaseKey
-				if cbk == "" {
-					cbk = "apps"
-				}
-
 				clusterName, nameSuffix := parseNodePoolClusteNameNameSuffix(m.Name)
 				np := NodePool{
 					PoolName:    nameSuffix,
@@ -134,7 +133,8 @@ func (s *Stack) FromPath(p string) error {
 
 				s.Services = append(s.Services, svc)
 			default:
-				return fmt.Errorf("error loading stack: %q is not a valid kind", kind)
+				log.Printf("ignoring module: %q: not a kubestack module", m.Name)
+				continue
 			}
 		}
 	}
