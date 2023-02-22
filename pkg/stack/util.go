@@ -76,6 +76,10 @@ func parseConfiguration(cbk string, cm map[string]map[string]cty.Value) (cfgs []
 			Attributes:     attrs,
 		}
 
+		if cbk == "" {
+			cbk = "apps"
+		}
+
 		if name == cbk {
 			cfgs = append([]Configuration{cfg}, cfgs...)
 			continue
