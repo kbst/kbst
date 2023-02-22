@@ -89,12 +89,13 @@ func initStarter(starter string, args []string) {
 	switch starter {
 	case "aks":
 		zones := strings.Split(clusterAKSZones, ",")
-		if len(zones) == 0 {
+		if clusterAKSZones == "" {
 			zones = cj.CloudInfo.Zones("azurerm", region, clusterAKSInstanceType)
 		}
 
 		baseCfg = map[string]cty.Value{
-			"resource_group":               cty.StringVal(args[4]),
+			"name_prefix":                  cty.StringVal(namePrefix),
+			"resource_group":               cty.StringVal(args[3]),
 			"default_node_pool_vm_size":    cty.StringVal(clusterAKSInstanceType),
 			"default_node_pool_min_count":  cty.NumberIntVal(clusterAKSMinNodes),
 			"default_node_pool_node_count": cty.NumberIntVal(clusterAKSMinNodes),
@@ -103,11 +104,12 @@ func initStarter(starter string, args []string) {
 		}
 	case "eks":
 		zones := strings.Split(clusterEKSZones, ",")
-		if len(zones) == 0 {
+		if clusterEKSZones == "" {
 			zones = cj.CloudInfo.Zones("aws", region, clusterEKSInstanceType)
 		}
 
 		baseCfg = map[string]cty.Value{
+			"name_prefix":                cty.StringVal(namePrefix),
 			"cluster_availability_zones": cty.StringVal(strings.Join(zones, ",")),
 			"cluster_instance_type":      cty.StringVal(clusterEKSInstanceType),
 			"cluster_min_size":           cty.NumberIntVal(clusterEKSMinNodes),
@@ -116,12 +118,14 @@ func initStarter(starter string, args []string) {
 		}
 	case "gke":
 		zones := strings.Split(clusterGKEZones, ",")
-		if len(zones) == 0 {
+		if clusterGKEZones == "" {
 			zones = cj.CloudInfo.Zones("google", region, clusterGKEInstanceType)
 		}
 
 		baseCfg = map[string]cty.Value{
-			"project_id":                 cty.StringVal(args[4]),
+			"name_prefix":                cty.StringVal(namePrefix),
+			"project_id":                 cty.StringVal(args[3]),
+			"region":                     cty.StringVal(region),
 			"cluster_min_node_count":     cty.NumberIntVal(clusterGKEMinNodes),
 			"cluster_initial_node_count": cty.NumberIntVal(clusterGKEMinNodes),
 			"cluster_max_node_count":     cty.NumberIntVal(clusterGKEMaxNodes),

@@ -178,6 +178,20 @@ func (s *Stack) Files() (map[string]*hclwrite.File, error) {
 		}
 	}
 
+	if s.root != nil {
+		for k := range s.root.Parser.Sources() {
+			_, found := files[k]
+			if found {
+				continue
+			}
+
+			// add Terraform files we do not modify
+			// with empty body, so we can exclude them
+			// in WriteChanges below
+			files[k] = hclwrite.NewFile()
+		}
+	}
+
 	return files, nil
 }
 
@@ -205,6 +219,11 @@ func (s *Stack) WriteChanges() error {
 	// determine files to write
 	toWrite := make(map[string][]byte)
 	for fn, cd := range current {
+		// if cd is empty, we don't touch this file
+		if len(cd.Bytes()) == 0 {
+			continue
+		}
+
 		// if the file does not exist yet
 		// or the data has changed
 		// add the name to the list of files to write

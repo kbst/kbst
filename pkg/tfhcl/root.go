@@ -87,13 +87,14 @@ func (r *Root) Read(path string) (err error) {
 			val, _ := mod.ConfigurationRaw.Value(r.evalContext)
 			mod.Configuration = make(map[string]map[string]cty.Value)
 
-			if !val.IsNull() && val.IsWhollyKnown() {
-				for k, v := range val.AsValueMap() {
-					mod.Configuration[k] = make(map[string]cty.Value)
+			for k, v := range val.AsValueMap() {
+				mod.Configuration[k] = make(map[string]cty.Value)
 
-					for ik, iv := range v.AsValueMap() {
-						mod.Configuration[k][ik] = iv
+				for ik, iv := range v.AsValueMap() {
+					if iv.IsNull() && !iv.IsWhollyKnown() {
+						continue
 					}
+					mod.Configuration[k][ik] = iv
 				}
 			}
 
