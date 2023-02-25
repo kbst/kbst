@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"sort"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
@@ -16,6 +17,9 @@ import (
 )
 
 type Stack struct {
+	path         string
+	toDelete     []string
+	toWrite      []string
 	root         *tfhcl.Root
 	cliJSON      util.CliJSON
 	BaseDomain   string
@@ -45,7 +49,8 @@ func NewStack(r *tfhcl.Root, cj util.CliJSON) *Stack {
 }
 
 func (s *Stack) FromPath(p string) error {
-	err := s.root.Read(p)
+	s.path = p
+	err := s.root.Read(s.path)
 	if err != nil {
 		return err
 	}
@@ -56,6 +61,12 @@ func (s *Stack) FromPath(p string) error {
 	}
 
 	s.BaseDomain = bd.AsString()
+
+	// if we call FromPath again to refresh
+	// we need these to be empty
+	s.Clusters = []Cluster{}
+	s.NodePools = []NodePool{}
+	s.Services = []Service{}
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
@@ -150,45 +161,31 @@ func (s *Stack) Files() (map[string]*hclwrite.File, error) {
 	p["kustomization"]["source"] = "kbst/kustomization"
 	fver := hclwrite.NewEmptyFile()
 	tfhcl.BlockTerraform(fver, p)
-	files["versions.tf"] = fver
+	files[path.Join(s.path, "versions.tf")] = fver
 
 	fvar := hclwrite.NewEmptyFile()
 	tfhcl.BlockVariable(fvar, "base_domain", "string", "Used to generate fully qualified domain names for all clusters.")
-	files["variables.tf"] = fvar
+	files[path.Join(s.path, "variables.tf")] = fvar
 
 	ftfvars := hclwrite.NewEmptyFile()
 	ftfvars.Body().SetAttributeValue("base_domain", cty.StringVal(s.BaseDomain))
-	files["config.auto.tfvars"] = ftfvars
+	files[path.Join(s.path, "config.auto.tfvars")] = ftfvars
 
 	for _, c := range s.Clusters {
 		for k, v := range c.ToHCL() {
-			files[k] = v
+			files[path.Join(s.path, k)] = v
 		}
 	}
 
 	for _, np := range s.NodePools {
 		for k, v := range np.ToHCL() {
-			files[k] = v
+			files[path.Join(s.path, k)] = v
 		}
 	}
 
 	for _, svc := range s.Services {
 		for k, v := range svc.ToHCL() {
-			files[k] = v
-		}
-	}
-
-	if s.root != nil {
-		for k := range s.root.Parser.Sources() {
-			_, found := files[k]
-			if found {
-				continue
-			}
-
-			// add Terraform files we do not modify
-			// with empty body, so we can exclude them
-			// in WriteChanges below
-			files[k] = hclwrite.NewFile()
+			files[path.Join(s.path, k)] = v
 		}
 	}
 
@@ -196,8 +193,6 @@ func (s *Stack) Files() (map[string]*hclwrite.File, error) {
 }
 
 func (s *Stack) WriteChanges() error {
-	existing := s.root.Parser.Sources()
-
 	current, err := s.Files()
 	if err != nil {
 		return err
@@ -205,32 +200,14 @@ func (s *Stack) WriteChanges() error {
 
 	//
 	//
-	// determine files to delete
-	toDelete := []string{}
-	for fn := range existing {
-		_, found := current[fn]
-		if !found {
-			toDelete = append(toDelete, fn)
-		}
-	}
-
-	//
-	//
 	// determine files to write
 	toWrite := make(map[string][]byte)
 	for fn, cd := range current {
-		// if cd is empty, we don't touch this file
-		if len(cd.Bytes()) == 0 {
+		if !slices.Contains(s.toWrite, fn) {
 			continue
 		}
 
-		// if the file does not exist yet
-		// or the data has changed
-		// add the name to the list of files to write
-		ed, found := existing[fn]
-		if !found || !bytes.Equal(ed, cd.Bytes()) {
-			toWrite[fn] = cd.Bytes()
-		}
+		toWrite[fn] = cd.Bytes()
 	}
 
 	// write Dockerfile if changed
@@ -241,7 +218,7 @@ func (s *Stack) WriteChanges() error {
 		}
 	}
 
-	for _, fn := range toDelete {
+	for _, fn := range s.toDelete {
 		err := os.Remove(fn)
 		if err != nil {
 			return err
@@ -282,14 +259,26 @@ func (s *Stack) AddCluster(namePrefix, provider, region, version string, configu
 		Configurations: configurations,
 	}
 
+	for _, ec := range s.Clusters {
+		if ec.NamePrefix == nc.NamePrefix &&
+			ec.Provider == nc.Provider &&
+			ec.Region == nc.Region {
+			return fmt.Errorf("error: cluster %q already exists", ec.Name())
+		}
+	}
+
 	nc.Validate(s.cliJSON)
 
 	s.Clusters = append(s.Clusters, nc)
 
+	for k := range nc.ToHCL() {
+		s.toWrite = append(s.toWrite, path.Join(s.path, k))
+	}
+
 	return nil
 }
 
-func (s *Stack) AddNodePool(clusterName, nameSuffix string, configurations []Configuration) (err error) {
+func (s *Stack) AddNodePool(clusterName, poolName string, configurations []Configuration) (err error) {
 	var provider, region, version string
 	for _, c := range s.Clusters {
 		if c.Name() == clusterName {
@@ -305,21 +294,43 @@ func (s *Stack) AddNodePool(clusterName, nameSuffix string, configurations []Con
 
 	nnp := NodePool{
 		ClusterName:    clusterName,
-		PoolName:       nameSuffix,
+		PoolName:       poolName,
 		Provider:       provider,
 		Region:         region,
 		Version:        version,
 		Configurations: configurations,
 	}
 
+	for _, enp := range s.NodePools {
+		if enp.ClusterName == nnp.ClusterName &&
+			enp.PoolName == nnp.PoolName {
+			return fmt.Errorf("error: node pool %q already exists", enp.Name())
+		}
+	}
+
 	nnp.Validate(s.cliJSON)
 
 	s.NodePools = append(s.NodePools, nnp)
+
+	for k := range nnp.ToHCL() {
+		s.toWrite = append(s.toWrite, path.Join(s.path, k))
+	}
 
 	return nil
 }
 
 func (s *Stack) AddService(clusterName, entryName, version string) (err error) {
+	var foundCluster bool
+	for _, c := range s.Clusters {
+		if c.Name() == clusterName {
+			foundCluster = true
+		}
+	}
+
+	if !foundCluster {
+		return fmt.Errorf("no cluster named %q found", clusterName)
+	}
+
 	catalogEntry, found := s.cliJSON.Catalog[entryName]
 	if !found {
 		return fmt.Errorf("no entry named %q found in catalog", entryName)
@@ -334,62 +345,94 @@ func (s *Stack) AddService(clusterName, entryName, version string) (err error) {
 		return err
 	}
 
-	s.Services = append(s.Services, Service{
+	nsvc := Service{
 		ClusterName:    clusterName,
 		EntryName:      entryName,
 		Provider:       "kustomization",
 		Version:        catalogVersion.Name,
 		Configurations: GenerateConfigurations(s.Environments, map[string]cty.Value{}),
-	})
+	}
+
+	for _, esvc := range s.Services {
+		if esvc.ClusterName == nsvc.ClusterName &&
+			esvc.EntryName == nsvc.EntryName {
+			return fmt.Errorf("error: service %q already exists", esvc.Name())
+		}
+	}
+
+	s.Services = append(s.Services, nsvc)
+
+	for k := range nsvc.ToHCL() {
+		s.toWrite = append(s.toWrite, path.Join(s.path, k))
+	}
 
 	return nil
 }
 
 func (s *Stack) Remove(rm string) error {
-	// if we're removing a cluster
-	for ic, c := range s.Clusters {
+	madeChange := false
+
+	// clusters
+	var newClusters []Cluster
+	for _, c := range s.Clusters {
 		if c.Name() == rm {
+			// we refuse to delete this cluster if it is the only one
 			if len(s.Clusters) == 1 {
 				return fmt.Errorf("stacks require one cluster, not removing %q", rm)
 			}
 
-			s.Clusters = slices.Delete(s.Clusters, ic, ic+1)
+			madeChange = true
 
-			// if we are removing a cluster
-			// also remove all its node pools
-			for inp, np := range s.NodePools {
-				if np.ClusterName == rm {
-					s.NodePools = slices.Delete(s.NodePools, inp, inp+1)
-				}
+			for k := range c.ToHCL() {
+				s.toDelete = append(s.toDelete, path.Join(s.path, k))
 			}
 
-			// and services
-			for isvc, svc := range s.Services {
-				if svc.ClusterName == rm {
-					s.Services = slices.Delete(s.Services, isvc, isvc+1)
-				}
+			continue
+		}
+		newClusters = append(newClusters, c)
+	}
+	s.Clusters = newClusters
+
+	// node pools
+	var newNodePools []NodePool
+	for _, np := range s.NodePools {
+		// we're removing node pools if the
+		// node pools name matches or
+		// the cluster name matches
+		if np.Name() == rm || np.ClusterName == rm {
+			madeChange = true
+
+			for k := range np.ToHCL() {
+				s.toDelete = append(s.toDelete, path.Join(s.path, k))
 			}
 
-			return nil
+			continue
 		}
+		newNodePools = append(newNodePools, np)
 	}
+	s.NodePools = newNodePools
 
-	// if we're removing a node pool
-	for inp, np := range s.NodePools {
-		if np.Name() == rm {
-			s.NodePools = slices.Delete(s.NodePools, inp, inp+1)
+	// services
+	var newServices []Service
+	for _, svc := range s.Services {
+		// we're removing services if the
+		// services name matches or
+		// the cluster name matches
+		if svc.Name() == rm || svc.ClusterName == rm {
+			madeChange = true
 
-			return nil
+			for k := range svc.ToHCL() {
+				s.toDelete = append(s.toDelete, path.Join(s.path, k))
+			}
+
+			continue
 		}
+		newServices = append(newServices, svc)
 	}
+	s.Services = newServices
 
-	// if we're removing a service
-	for isvc, svc := range s.Services {
-		if svc.Name() == rm {
-			s.Services = slices.Delete(s.Services, isvc, isvc+1)
-
-			return nil
-		}
+	if madeChange {
+		return nil
 	}
 
 	return fmt.Errorf("error %q did not match any clusters, node pools or services", rm)

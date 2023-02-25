@@ -11,7 +11,7 @@ import (
 func parsePrefixRegion(n string) (prefix, region string, err error) {
 	nspl := strings.Split(n, "_")
 
-	if len(nspl) != 3 {
+	if len(nspl) < 3 {
 		return "", "", fmt.Errorf("can not parse prefix and region from %q", n)
 	}
 

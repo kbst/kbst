@@ -1,8 +1,10 @@
 package stack
 
 import (
+	"log"
 	"testing"
 
+	"github.com/kbst/kbst/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/exp/maps"
@@ -59,6 +61,26 @@ func TestClusterNameGKE(t *testing.T) {
 	n := c.Name()
 
 	assert.Equal(t, "gke_kbstgke_test-region1", n)
+}
+
+func TestClusterRejectEmptyConfiguration(t *testing.T) {
+	c := Cluster{
+		NamePrefix:     "kbstgke",
+		Provider:       "google",
+		Region:         "test-region1",
+		Version:        "test-version",
+		Configurations: []Configuration{},
+	}
+
+	cj := util.CliJSON{}
+	err := cj.Load(util.CachedDownloader{})
+	if err != nil {
+		log.Println(err)
+		t.Fail()
+	}
+
+	err = c.Validate(cj)
+	assert.EqualError(t, err, "invalid empty configuration []", nil)
 }
 
 func TestClusterToHCL(t *testing.T) {

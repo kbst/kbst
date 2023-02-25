@@ -1,8 +1,10 @@
 package stack
 
 import (
+	"log"
 	"testing"
 
+	"github.com/kbst/kbst/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/maps"
 )
@@ -50,6 +52,27 @@ func TestNodePoolNameGKE(t *testing.T) {
 	n := np.Name()
 
 	assert.Equal(t, "gke_kbstgke_test-region1_node_pool_test-extra", n)
+}
+
+func TestNodePoolRejectEmptyConfiguration(t *testing.T) {
+	np := NodePool{
+		PoolName:       "test-extra",
+		ClusterName:    "gke_kbstgke_test-region1",
+		Provider:       "azurerm",
+		Region:         "test-region",
+		Version:        "test-version",
+		Configurations: []Configuration{},
+	}
+
+	cj := util.CliJSON{}
+	err := cj.Load(util.CachedDownloader{})
+	if err != nil {
+		log.Println(err)
+		t.Fail()
+	}
+
+	err = np.Validate(cj)
+	assert.EqualError(t, err, "invalid empty configuration []", nil)
 }
 
 func TestNodePoolToHCL(t *testing.T) {

@@ -25,6 +25,13 @@ func (np *NodePool) Validate(cj util.CliJSON) error {
 
 	//
 	//
+	// Reject empty configuration
+	if len(np.Configurations) == 0 {
+		return fmt.Errorf("invalid empty configuration %+v", np.Configurations)
+	}
+
+	//
+	//
 	// Validate provider, region, instance type, zone combinations
 	baseCfg := np.Configurations[0].Attributes
 

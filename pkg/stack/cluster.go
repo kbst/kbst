@@ -24,6 +24,13 @@ func (c *Cluster) Validate(cj util.CliJSON) error {
 
 	//
 	//
+	// Reject empty configuration
+	if len(c.Configurations) == 0 {
+		return fmt.Errorf("invalid empty configuration %+v", c.Configurations)
+	}
+
+	//
+	//
 	// Validate framework version
 	var versionOptions []string
 	for _, fv := range cj.Framework.Versions {
