@@ -72,14 +72,22 @@ var serviceRelease string
 var serviceClusterName string
 
 var addCmd = &cobra.Command{
-	Use:   "add",
+	Use:   "add command [flags]",
 	Short: "Add clusters, node pools or services",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return ErrMissingCommand
+	},
 }
 
 var clusterAddCmd = &cobra.Command{
-	Use:     "cluster",
+	Use:     "cluster command [flags]",
 	Aliases: []string{"c"},
 	Short:   "Add an AKS, EKS or GKE cluster module",
+	Args:    cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return ErrMissingCommand
+	},
 }
 
 var clusterAddAKSCmd = &cobra.Command{
@@ -230,9 +238,13 @@ var clusterAddGKECmd = &cobra.Command{
 }
 
 var nodePoolAddCmd = &cobra.Command{
-	Use:     "node-pool",
+	Use:     "node-pool command [flags]",
 	Aliases: []string{"np"},
 	Short:   "Add an AKS, EKS or GKE node pool module",
+	Args:    cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return ErrMissingCommand
+	},
 }
 
 var nodePoolAddAKSCmd = &cobra.Command{

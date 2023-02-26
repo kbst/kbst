@@ -38,8 +38,12 @@ var repositoryCmd = &cobra.Command{
 }
 
 var initCmd = &cobra.Command{
-	Use:   "init <starter>",
+	Use:   "init command [flags]",
 	Short: "Scaffold a new Kubestack repository",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return ErrMissingCommand
+	},
 }
 
 var initAKSCmd = &cobra.Command{
