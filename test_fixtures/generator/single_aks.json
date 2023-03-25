@@ -1,0 +1,70 @@
+{
+    "base_domain": "kubestack.example.com",
+    "base_environment": "apps",
+    "environments": [
+        {
+            "key": "apps",
+            "name": "apps"
+        },
+        {
+            "key": "ops",
+            "name": "ops"
+        }
+    ],
+    "modules": [
+        {
+            "children": [
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "nginx",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
+                }
+            ],
+            "configurations": [
+                {
+                    "data": {
+                        "default_node_pool_max_count": 6,
+                        "default_node_pool_min_count": 3,
+                        "default_node_pool_node_count": 3,
+                        "default_node_pool_vm_size": "Standard_D4_v4",
+                        "name_prefix": "kbst",
+                        "region": "westeurope",
+                        "resource_group": "terraform-kubestack-testing"
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "default_node_pool_max_count": null,
+                        "default_node_pool_min_count": null,
+                        "default_node_pool_node_count": null,
+                        "default_node_pool_vm_size": null,
+                        "name_prefix": null,
+                        "region": null,
+                        "resource_group": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
+            "name": null,
+            "provider": "azurerm",
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
+        }
+    ]
+}

@@ -7,10 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ">=1.15"
 
@@ -26,84 +26,86 @@ jobs:
           version: latest
           args: release --skip-publish --snapshot --rm-dist --skip-sign
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist/*.zip
 
-  linux:
-    runs-on: ubuntu-latest
+  integration-test:
     needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        starter: [aks, eks, gke]
+
+    runs-on: ${{matrix.os}}
 
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: dist
       
+      - run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor}}@ghactions"
+
       - run: unzip kbst_linux_amd64.zip
+        if: matrix.os == 'ubuntu-latest'
 
-      - run: echo "${{ github.workspace }}" >> $GITHUB_PATH
-
-      - run: kbst --version
-
-      - run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor}}@ghactions"
-
-      - run: kbst repo init gke
-
-      - run: kbst --path kubestack-starter-gke manifest install prometheus clusterwide
-
-      - name: kbst local apply
-        run: |
-          cd kubestack-starter-gke
-          kbst local apply --skip-watch
-      
-      - name: kbst local destroy
-        run: kbst --path kubestack-starter-gke local destroy
-
-  darwin:
-    runs-on: macos-latest
-    needs: build
-
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: dist
-      
       - run: unzip kbst_darwin_amd64.zip
+        if: matrix.os == 'macos-latest'
+
+      - run: unzip kbst_windows_amd64.zip
+        if: matrix.os == 'windows-latest'
 
       - run: echo "${{ github.workspace }}" >> $GITHUB_PATH
-
-      - run: kbst --version
-
-      - run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor}}@ghactions"
-
-      - run: kbst repo init eks
-
-      - run: kbst --path kubestack-starter-eks manifest install prometheus clusterwide
-
-  windows:
-    runs-on: windows-latest
-    needs: build
-
-    steps:
-      - uses: actions/download-artifact@v2
-        with:
-          name: dist
-      
-      - run: unzip kbst_windows_amd64.zip
+        if: matrix.os != 'windows-latest'
 
       - run: echo "${{ github.workspace }}" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        if: matrix.os == 'windows-latest'
 
-      - run: kbst.exe --version
+      - run: kbst --version
 
       - run: |
-          git config --global user.name "${{ github.actor }}"
-          git config --global user.email "${{ github.actor}}@ghactions"
+          kbst init aks kubestack.example.com gc0 westeurope terraform-kubestack-testing
+        if: matrix.starter == 'aks'
 
-      - run: kbst.exe repo init aks
+      - run: |
+          kbst init eks kubestack.example.com gc0 eu-west-1
+        if: matrix.starter == 'eks'
 
-      - run: kbst.exe --path kubestack-starter-aks manifest install prometheus clusterwide
+      - run: |
+          kbst init gke kubestack.example.com gc0 europe-west1 terraform-kubestack-testing
+        if: matrix.starter == 'gke'
+
+      - run: |
+          kbst list
+        working-directory: kubestack-starter-${{matrix.starter}}
+
+      - run: |
+          kbst add cluster aks gc1 westeurope terraform-kubestack-testing
+          kbst add node-pool aks aks_gc1_westeurope extra
+        working-directory: kubestack-starter-${{matrix.starter}}
+      
+      - run: |
+          kbst add cluster eks gc1 eu-west-1
+          kbst add node-pool eks eks_gc1_eu-west-1 extra
+        working-directory: kubestack-starter-${{matrix.starter}}
+
+      - run: |
+          kbst add cluster gke gc1 europe-west1 terraform-kubestack-testing
+          kbst add node-pool gke gke_gc1_europe-west1 extra
+        working-directory: kubestack-starter-${{matrix.starter}}
+
+      - run: |
+          kbst add service prometheus
+          kbst add service tektoncd
+          kbst add service nginx
+        working-directory: kubestack-starter-${{matrix.starter}}
+
+      - run: |
+          kbst remove aks_gc1_westeurope
+          kbst remove eks_gc1_eu-west-1
+          kbst remove gke_gc1_europe-west1
+        working-directory: kubestack-starter-${{matrix.starter}}

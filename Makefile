@@ -8,7 +8,7 @@ install: test
 	go install .
 
 snapshot: test
-	goreleaser release --skip-publish --snapshot --rm-dist --skip-sign
+	goreleaser release --skip-publish --snapshot --clean --skip-sign
 
 tidy:
 	go mod tidy

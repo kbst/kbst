@@ -1,0 +1,70 @@
+{
+    "base_domain": "kubestack.example.com",
+    "base_environment": "apps",
+    "environments": [
+        {
+            "key": "apps",
+            "name": "apps"
+        },
+        {
+            "key": "ops",
+            "name": "ops"
+        }
+    ],
+    "modules": [
+        {
+            "children": [
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "nginx",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
+                }
+            ],
+            "configurations": [
+                {
+                    "data": {
+                        "cluster_availability_zones": "eu-west-1a,eu-west-1b,eu-west-1c",
+                        "cluster_desired_capacity": 3,
+                        "cluster_instance_type": "t3a.xlarge",
+                        "cluster_max_size": 6,
+                        "cluster_min_size": 3,
+                        "name_prefix": "kbst",
+                        "region": "eu-west-1"
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "cluster_availability_zones": null,
+                        "cluster_desired_capacity": null,
+                        "cluster_instance_type": null,
+                        "cluster_max_size": null,
+                        "cluster_min_size": null,
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
+            "name": null,
+            "provider": "aws",
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
+        }
+    ]
+}

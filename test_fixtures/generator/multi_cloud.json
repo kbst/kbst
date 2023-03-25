@@ -1,0 +1,434 @@
+{
+    "base_domain": "kubestack.example.com",
+    "base_environment": "apps_prod",
+    "environments": [
+        {
+            "key": "apps_prod",
+            "name": "apps-prod"
+        },
+        {
+            "key": "apps",
+            "name": "apps"
+        },
+        {
+            "key": "ops",
+            "name": "ops"
+        }
+    ],
+    "modules": [
+        {
+            "children": [
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "desired_capacity": 1,
+                                "instance_types": "t3a.xlarge",
+                                "max_size": 1,
+                                "min_size": 1,
+                                "name": "extra"
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "desired_capacity": null,
+                                "instance_types": null,
+                                "max_size": null,
+                                "min_size": null,
+                                "name": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "desired_capacity": null,
+                                "instance_types": null,
+                                "max_size": null,
+                                "min_size": null,
+                                "name": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": null,
+                    "provider": "aws",
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
+                },
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "nginx",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
+                },
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "cert-manager",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v1.6.1-kbst.0"
+                }
+            ],
+            "configurations": [
+                {
+                    "data": {
+                        "cluster_availability_zones": "eu-west-1a,eu-west-1b,eu-west-1c",
+                        "cluster_desired_capacity": 1,
+                        "cluster_instance_type": "t3a.medium",
+                        "cluster_max_size": 1,
+                        "cluster_min_size": 1,
+                        "name_prefix": "kbst",
+                        "region": "eu-west-1"
+                    },
+                    "env_key": "apps_prod"
+                },
+                {
+                    "data": {
+                        "cluster_availability_zones": null,
+                        "cluster_desired_capacity": null,
+                        "cluster_instance_type": null,
+                        "cluster_max_size": null,
+                        "cluster_min_size": null,
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "cluster_availability_zones": null,
+                        "cluster_desired_capacity": null,
+                        "cluster_instance_type": null,
+                        "cluster_max_size": null,
+                        "cluster_min_size": null,
+                        "name_prefix": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
+            "name": null,
+            "provider": "aws",
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
+        },
+        {
+            "children": [
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "cert-manager",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v1.6.1-kbst.0"
+                },
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "max_count": 1,
+                                "min_count": 1,
+                                "node_pool_name": "extra",
+                                "vm_size": "Standard_D2_v2"
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "max_count": null,
+                                "min_count": null,
+                                "node_pool_name": null,
+                                "vm_size": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "max_count": null,
+                                "min_count": null,
+                                "node_pool_name": null,
+                                "vm_size": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": null,
+                    "provider": "azurerm",
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
+                },
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "nginx",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
+                }
+            ],
+            "configurations": [
+                {
+                    "data": {
+                        "default_node_pool_max_count": 1,
+                        "default_node_pool_min_count": 1,
+                        "default_node_pool_node_count": 1,
+                        "default_node_pool_vm_size": "Standard_D2_v4",
+                        "name_prefix": "kbst",
+                        "region": "westeurope",
+                        "resource_group": "terraform-kubestack-testing"
+                    },
+                    "env_key": "apps_prod"
+                },
+                {
+                    "data": {
+                        "default_node_pool_max_count": null,
+                        "default_node_pool_min_count": null,
+                        "default_node_pool_node_count": null,
+                        "default_node_pool_vm_size": null,
+                        "name_prefix": null,
+                        "region": null,
+                        "resource_group": null
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "default_node_pool_max_count": null,
+                        "default_node_pool_min_count": null,
+                        "default_node_pool_node_count": null,
+                        "default_node_pool_vm_size": null,
+                        "name_prefix": null,
+                        "region": null,
+                        "resource_group": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
+            "name": null,
+            "provider": "azurerm",
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
+        },
+        {
+            "children": [
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "nginx",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v0.49.3-kbst.0"
+                },
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "location": "europe-west1",
+                                "machine_type": "e2-standard-4",
+                                "max_node_count": 1,
+                                "min_node_count": 1,
+                                "name": "extra",
+                                "node_locations": "europe-west1-b,europe-west1-c,europe-west1-d"
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "location": null,
+                                "machine_type": null,
+                                "max_node_count": null,
+                                "min_node_count": null,
+                                "name": null,
+                                "node_locations": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "location": null,
+                                "machine_type": null,
+                                "max_node_count": null,
+                                "min_node_count": null,
+                                "name": null,
+                                "node_locations": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": null,
+                    "provider": "google",
+                    "type": "node_pool",
+                    "version": "v0.16.0-beta.0"
+                },
+                {
+                    "configurations": [
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps_prod"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "apps"
+                        },
+                        {
+                            "data": {
+                                "variant": null
+                            },
+                            "env_key": "ops"
+                        }
+                    ],
+                    "name": "cert-manager",
+                    "provider": "kustomization",
+                    "type": "service",
+                    "version": "v1.6.1-kbst.0"
+                }
+            ],
+            "configurations": [
+                {
+                    "data": {
+                        "cluster_initial_node_count": 1,
+                        "cluster_machine_type": "e2-standard-4",
+                        "cluster_max_node_count": 3,
+                        "cluster_min_master_version": "1.20",
+                        "cluster_min_node_count": 1,
+                        "cluster_node_locations": "europe-west1-b,europe-west1-c,europe-west1-d",
+                        "name_prefix": "kbst",
+                        "project_id": "terraform-kubestack-testing",
+                        "region": "europe-west1"
+                    },
+                    "env_key": "apps_prod"
+                },
+                {
+                    "data": {
+                        "cluster_initial_node_count": null,
+                        "cluster_machine_type": null,
+                        "cluster_max_node_count": null,
+                        "cluster_min_master_version": null,
+                        "cluster_min_node_count": null,
+                        "cluster_node_locations": null,
+                        "name_prefix": null,
+                        "project_id": null,
+                        "region": null
+                    },
+                    "env_key": "apps"
+                },
+                {
+                    "data": {
+                        "cluster_initial_node_count": null,
+                        "cluster_machine_type": null,
+                        "cluster_max_node_count": null,
+                        "cluster_min_master_version": null,
+                        "cluster_min_node_count": null,
+                        "cluster_node_locations": null,
+                        "name_prefix": null,
+                        "project_id": null,
+                        "region": null
+                    },
+                    "env_key": "ops"
+                }
+            ],
+            "name": null,
+            "provider": "google",
+            "type": "cluster",
+            "version": "v0.16.0-beta.0"
+        }
+    ]
+}

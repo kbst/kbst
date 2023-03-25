@@ -19,7 +19,7 @@ type Entry struct {
 
 func (e Entry) GetReleaseOrLatest(r string) (v Version, err error) {
 	if len(e.Versions) < 1 {
-		return v, fmt.Errorf("No versions for '%s'", e.Name)
+		return v, fmt.Errorf("no versions for '%s'", e.Name)
 	}
 
 	v = e.Versions[0]
@@ -49,6 +49,7 @@ type CliJSON struct {
 	Catalog   map[string]Entry `json:"catalog"`
 	Framework Entry            `json:"framework"`
 	Cli       Entry            `json:"cli"`
+	CloudInfo CloudInfo
 }
 
 func (cj *CliJSON) Load(d Downloader) (err error) {
@@ -64,6 +65,11 @@ func (cj *CliJSON) Load(d Downloader) (err error) {
 	}
 
 	json.Unmarshal([]byte(respJson), &cj)
+
+	err = cj.CloudInfo.Load(d)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
