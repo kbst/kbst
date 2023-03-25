@@ -25,11 +25,6 @@ type Root struct {
 	Dockerfiles    map[string][]byte
 }
 
-type TfHCLFile struct {
-	Path   string
-	Blocks Blocks
-}
-
 func NewRoot() *Root {
 	r := Root{
 		evalContext: nil,
@@ -85,16 +80,22 @@ func (r *Root) Read(path string) (err error) {
 
 			// parse raw module configuration
 			val, _ := mod.ConfigurationRaw.Value(r.evalContext)
-			mod.Configuration = make(map[string]map[string]cty.Value)
 
-			for k, v := range val.AsValueMap() {
-				mod.Configuration[k] = make(map[string]cty.Value)
+			if !val.IsNull() {
+				mod.Configuration = make(map[string]map[string]cty.Value)
+				mod.Configuration = make(map[string]map[string]cty.Value)
 
-				for ik, iv := range v.AsValueMap() {
-					if iv.IsNull() && !iv.IsWhollyKnown() {
-						continue
+				mod.Configuration = make(map[string]map[string]cty.Value)
+
+				for k, v := range val.AsValueMap() {
+					mod.Configuration[k] = make(map[string]cty.Value)
+
+					for ik, iv := range v.AsValueMap() {
+						if iv.IsNull() && !iv.IsWhollyKnown() {
+							continue
+						}
+						mod.Configuration[k][ik] = iv
 					}
-					mod.Configuration[k][ik] = iv
 				}
 			}
 
