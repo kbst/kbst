@@ -18,7 +18,7 @@ func parsePrefixRegion(n string) (prefix, region string, err error) {
 	return nspl[1], nspl[2], nil
 }
 
-func parseKindProviderVersion(s, v string) (kind, provider, version string) {
+func parseKindProviderVersion(s, v string) (kind, provider, version string, err error) {
 	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//") {
 		version = strings.Split(s, "?ref=")[1]
 	}
@@ -26,6 +26,10 @@ func parseKindProviderVersion(s, v string) (kind, provider, version string) {
 	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//aws/cluster") {
 		kind = "cluster"
 		provider = "aws"
+	}
+
+	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//aws/cluster/elb-dns") {
+		kind = "elb-dns"
 	}
 
 	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//google/cluster") {
@@ -56,17 +60,11 @@ func parseKindProviderVersion(s, v string) (kind, provider, version string) {
 		version = v
 	}
 
-	return kind, provider, version
-}
+	if kind != "" && provider != "" && version != "" {
+		return kind, provider, version, nil
+	}
 
-func parseNodePoolClusteNameNameSuffix(s string) (clusterName, nameSuffix string) {
-	spl := strings.Split(s, "_node_pool_")
-	return spl[0], spl[1]
-}
-
-func parseServiceClusteNameEntryName(s string) (clusterName, entryName string) {
-	spl := strings.Split(s, "_service_")
-	return spl[0], spl[1]
+	return kind, provider, version, fmt.Errorf("could not detect kind, provider and version for: source: %q, version: %q", s, v)
 }
 
 func parseConfiguration(cbk string, cm map[string]map[string]cty.Value) (cfgs []Configuration) {

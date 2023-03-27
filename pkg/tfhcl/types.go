@@ -19,11 +19,17 @@ type Blocks struct {
 }
 
 type Module struct {
-	Name                 string         `hcl:"name,label"`
-	ProvidersRaw         hcl.Expression `hcl:"providers,optional"`
-	Providers            map[string]string
-	Source               string         `hcl:"source"`
-	Version              string         `hcl:"version,optional"`
+	Name               string `hcl:"name,label"`
+	ParentCluster      string
+	ProvidersRaw       hcl.Expression `hcl:"providers,optional"`
+	Providers          map[string]string
+	Source             string         `hcl:"source"`
+	Version            string         `hcl:"version,optional"`
+	ClusterNameRaw     hcl.Expression `hcl:"cluster_name,optional"`
+	ClusterName        string
+	ClusterMetadataRaw hcl.Expression `hcl:"cluster_metadata,optional"`
+	ClusterMetadata    string
+
 	ConfigurationBaseKey string         `hcl:"configuration_base_key,optional"`
 	ConfigurationRaw     hcl.Expression `hcl:"configuration"`
 	Configuration        map[string]map[string]cty.Value
@@ -31,9 +37,10 @@ type Module struct {
 }
 
 type Provider struct {
-	Name   string   `hcl:"name,label"`
-	Region string   `hcl:"region,optional"`
-	Body   hcl.Body `hcl:",remain"`
+	Name          string         `hcl:"name,label"`
+	Region        string         `hcl:"region,optional"`
+	KubeconfigRaw hcl.Expression `hcl:"kubeconfig_raw,optional"`
+	Body          hcl.Body       `hcl:",remain"`
 }
 
 type Variable struct {
