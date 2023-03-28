@@ -28,6 +28,7 @@ type Stack struct {
 	Clusters     []Cluster
 	NodePools    []NodePool
 	Services     []Service
+	Modules      []Module
 }
 
 type Environment struct {
@@ -68,12 +69,12 @@ func (s *Stack) FromPath(p string) error {
 	s.Clusters = []Cluster{}
 	s.NodePools = []NodePool{}
 	s.Services = []Service{}
+	s.Modules = []Module{}
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
 			kind, provider, version, err := parseKindProviderVersion(m.Source, m.Version)
 			if err != nil {
-				log.Printf("ignoring module: %q: %s", m.Name, err)
 				continue
 			}
 
@@ -101,19 +102,33 @@ func (s *Stack) FromPath(p string) error {
 				}
 			case "azurerm":
 				_, r, err := parsePrefixRegion(m.Name)
-				if err != nil {
-					log.Printf("ignoring module: %q: %s", m.Name, err)
+				if err == nil {
+					region = r
 				}
-				region = r
 			default:
 				if v, ok := m.Configuration[cbk]["region"]; ok {
 					region = v.AsString()
 				}
 			}
 
+			if region == "" {
+				log.Printf("skipping cluster: %q, could not parse region: source: %q, version: %q", m.Name, m.Source, m.Version)
+				continue
+			}
+
+			var namePrefix string
+			if v, ok := m.Configuration[cbk]["name_prefix"]; ok {
+				namePrefix = v.AsString()
+			}
+
+			if namePrefix == "" {
+				log.Printf("skipping cluster: %q, could not parse name_prefix: source: %q, version: %q", m.Name, m.Source, m.Version)
+				continue
+			}
+
 			c := Cluster{
 				tfMod:      &m,
-				NamePrefix: m.Configuration[cbk]["name_prefix"].AsString(),
+				NamePrefix: namePrefix,
 				Provider:   provider,
 				Region:     region,
 				Version:    version,
@@ -153,7 +168,11 @@ func (s *Stack) FromPath(p string) error {
 		for _, m := range mf {
 			kind, provider, version, err := parseKindProviderVersion(m.Source, m.Version)
 			if err != nil {
-				log.Printf("ignoring module: %q: %s", m.Name, err)
+				// if we can't parse source and version
+				// we consider it a non Kubestack module
+				s.Modules = append(s.Modules, Module{
+					tfMod: &m,
+				})
 				continue
 			}
 
@@ -164,13 +183,19 @@ func (s *Stack) FromPath(p string) error {
 
 			switch kind {
 			case "cluster":
+				// we already did clusters in the first loop
 				continue
 			case "node_pool":
 				var nameSuffix string
-				if v, ok := m.Configuration[cbk]["node_pool_name "]; ok {
+				if v, ok := m.Configuration[cbk]["node_pool_name"]; ok {
 					nameSuffix = v.AsString()
-				} else if v, ok := m.Configuration[cbk]["name "]; ok {
+				} else if v, ok := m.Configuration[cbk]["name"]; ok {
 					nameSuffix = v.AsString()
+				}
+
+				if nameSuffix == "" {
+					log.Printf("skipping node-pool: %q, could not parse name: source: %q, version: %q", m.Name, m.Source, m.Version)
+					continue
 				}
 
 				var clusterName, region string
@@ -179,6 +204,16 @@ func (s *Stack) FromPath(p string) error {
 						clusterName = c.Name()
 						region = c.Region
 					}
+				}
+
+				if clusterName == "" {
+					log.Printf("skipping node-pool: %q, could not parse cluster name: source: %q, version: %q", m.Name, m.Source, m.Version)
+					continue
+				}
+
+				if region == "" {
+					log.Printf("skipping node-pool: %q, could not parse region: source: %q, version: %q", m.Name, m.Source, m.Version)
+					continue
 				}
 
 				np := NodePool{
@@ -201,8 +236,10 @@ func (s *Stack) FromPath(p string) error {
 				} else if strings.HasPrefix(m.Name, m.ParentCluster) {
 					spl := strings.Split(m.Name, "_")
 					entryName = spl[len(spl)-1]
-				} else {
-					log.Printf("ignoring module: %q: could not detect entry name", m.Name)
+				}
+
+				if entryName == "" {
+					log.Printf("skipping service: %q, could not parse entry name: source: %q, version: %q", m.Name, m.Source, m.Version)
 					continue
 				}
 
@@ -220,7 +257,9 @@ func (s *Stack) FromPath(p string) error {
 			case "elb-dns":
 				continue
 			default:
-				log.Printf("unexpected module: %q: not a kubestack module", m.Name)
+				log.Printf("unexpected module type: %q: name: %q not supported\n", kind, m.Name)
+				log.Printf("consider opening an issue and include the module block\n")
+				log.Printf("https://github.com/kbst/kbst/issues/new\n")
 				continue
 			}
 		}
