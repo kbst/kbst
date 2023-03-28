@@ -11,6 +11,7 @@ import (
 )
 
 type Cluster struct {
+	tfMod          *tfhcl.Module
 	NamePrefix     string
 	Provider       string
 	Region         string
@@ -106,5 +107,9 @@ func (c *Cluster) cloudK8sPrefix() string {
 }
 
 func (c *Cluster) Name() string {
+	if c.tfMod != nil {
+		return c.tfMod.Name
+	}
+
 	return fmt.Sprintf("%s_%s_%s", c.cloudK8sPrefix(), c.NamePrefix, c.Region)
 }

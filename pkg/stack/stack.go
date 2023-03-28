@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/kbst/kbst/pkg/tfhcl"
@@ -55,8 +56,8 @@ func (s *Stack) FromPath(p string) error {
 		return err
 	}
 
-	bd, exists := s.root.VariableValues["base_domain"]
-	if !exists {
+	bd, ok := s.root.GetVariableValue("base_domain")
+	if !ok {
 		return fmt.Errorf("value for required var %q not found", "base_domain")
 	}
 
@@ -70,13 +71,92 @@ func (s *Stack) FromPath(p string) error {
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
-			prefix, region, err := parsePrefixRegion(m.Name)
+			kind, provider, version, err := parseKindProviderVersion(m.Source, m.Version)
 			if err != nil {
 				log.Printf("ignoring module: %q: %s", m.Name, err)
 				continue
 			}
 
-			kind, provider, version := parseKindProviderVersion(m.Source, m.Version)
+			if kind != "cluster" {
+				continue
+			}
+
+			cbk := m.ConfigurationBaseKey
+			if cbk == "" {
+				cbk = "apps"
+			}
+
+			var region string
+
+			switch provider {
+			case "aws":
+				if _, ok := m.Providers["aws"]; ok {
+					for _, providers := range s.root.Providers {
+						for _, p := range providers {
+							if p.Name == "aws" {
+								region = p.Region
+							}
+						}
+					}
+				}
+			case "azurerm":
+				_, r, err := parsePrefixRegion(m.Name)
+				if err != nil {
+					log.Printf("ignoring module: %q: %s", m.Name, err)
+				}
+				region = r
+			default:
+				if v, ok := m.Configuration[cbk]["region"]; ok {
+					region = v.AsString()
+				}
+			}
+
+			c := Cluster{
+				tfMod:      &m,
+				NamePrefix: m.Configuration[cbk]["name_prefix"].AsString(),
+				Provider:   provider,
+				Region:     region,
+				Version:    version,
+			}
+
+			keys := maps.Keys(m.Configuration)
+			sort.Strings(keys)
+
+			for _, ek := range keys {
+				isBk := false
+				if ek == cbk {
+					isBk = true
+				}
+
+				env := Environment{
+					Key:       ek,
+					IsBaseKey: isBk,
+				}
+
+				if !slices.Contains(s.Environments, env) {
+					if env.IsBaseKey {
+						// base environment always comes first
+						s.Environments = append([]Environment{env}, s.Environments...)
+						continue
+					}
+					s.Environments = append(s.Environments, env)
+				}
+			}
+
+			c.Configurations = parseConfiguration(m.ConfigurationBaseKey, m.Configuration)
+
+			s.Clusters = append(s.Clusters, c)
+		}
+	}
+
+	for _, mf := range s.root.Modules {
+		for _, m := range mf {
+			kind, provider, version, err := parseKindProviderVersion(m.Source, m.Version)
+			if err != nil {
+				log.Printf("ignoring module: %q: %s", m.Name, err)
+				continue
+			}
+
 			cbk := m.ConfigurationBaseKey
 			if cbk == "" {
 				cbk = "apps"
@@ -84,43 +164,25 @@ func (s *Stack) FromPath(p string) error {
 
 			switch kind {
 			case "cluster":
-				c := Cluster{
-					NamePrefix: prefix,
-					Provider:   provider,
-					Region:     region,
-					Version:    version,
-				}
-
-				keys := maps.Keys(m.Configuration)
-				sort.Strings(keys)
-
-				for _, ek := range keys {
-					isBk := false
-					if ek == cbk {
-						isBk = true
-					}
-
-					env := Environment{
-						Key:       ek,
-						IsBaseKey: isBk,
-					}
-
-					if !slices.Contains(s.Environments, env) {
-						if env.IsBaseKey {
-							// base environment always comes first
-							s.Environments = append([]Environment{env}, s.Environments...)
-							continue
-						}
-						s.Environments = append(s.Environments, env)
-					}
-				}
-
-				c.Configurations = parseConfiguration(m.ConfigurationBaseKey, m.Configuration)
-
-				s.Clusters = append(s.Clusters, c)
+				continue
 			case "node_pool":
-				clusterName, nameSuffix := parseNodePoolClusteNameNameSuffix(m.Name)
+				var nameSuffix string
+				if v, ok := m.Configuration[cbk]["node_pool_name "]; ok {
+					nameSuffix = v.AsString()
+				} else if v, ok := m.Configuration[cbk]["name "]; ok {
+					nameSuffix = v.AsString()
+				}
+
+				var clusterName, region string
+				for _, c := range s.Clusters {
+					if c.Name() == m.ParentCluster {
+						clusterName = c.Name()
+						region = c.Region
+					}
+				}
+
 				np := NodePool{
+					tfMod:       &m,
 					PoolName:    nameSuffix,
 					ClusterName: clusterName,
 					Provider:    provider,
@@ -132,10 +194,22 @@ func (s *Stack) FromPath(p string) error {
 
 				s.NodePools = append(s.NodePools, np)
 			case "service":
-				clusterName, entryName := parseServiceClusteNameEntryName(m.Name)
+				var entryName string
+				if strings.HasSuffix(m.Source, "/kustomization") {
+					spl := strings.Split(m.Source, "/")
+					entryName = spl[len(spl)-2]
+				} else if strings.HasPrefix(m.Name, m.ParentCluster) {
+					spl := strings.Split(m.Name, "_")
+					entryName = spl[len(spl)-1]
+				} else {
+					log.Printf("ignoring module: %q: could not detect entry name", m.Name)
+					continue
+				}
+
 				svc := Service{
+					tfMod:       &m,
 					EntryName:   entryName,
-					ClusterName: clusterName,
+					ClusterName: m.ParentCluster,
 					Provider:    "kustomization",
 					Version:     m.Version,
 				}
@@ -143,8 +217,10 @@ func (s *Stack) FromPath(p string) error {
 				svc.Configurations = parseConfiguration(m.ConfigurationBaseKey, m.Configuration)
 
 				s.Services = append(s.Services, svc)
+			case "elb-dns":
+				continue
 			default:
-				log.Printf("ignoring module: %q: not a kubestack module", m.Name)
+				log.Printf("unexpected module: %q: not a kubestack module", m.Name)
 				continue
 			}
 		}

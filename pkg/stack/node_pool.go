@@ -11,6 +11,7 @@ import (
 )
 
 type NodePool struct {
+	tfMod          *tfhcl.Module
 	PoolName       string
 	ClusterName    string
 	Provider       string
@@ -96,5 +97,8 @@ func (np *NodePool) ToHCL() map[string]*hclwrite.File {
 }
 
 func (np *NodePool) Name() string {
+	if np.tfMod != nil {
+		return np.tfMod.Name
+	}
 	return fmt.Sprintf("%s_%s_%s", np.ClusterName, "node_pool", np.PoolName)
 }

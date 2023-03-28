@@ -21,7 +21,8 @@ func TestParsePrefixRegionError(t *testing.T) {
 
 // EKS
 func TestParseKindProviderVersionEKSCluster(t *testing.T) {
-	k, p, v := parseKindProviderVersion("github.com/kbst/terraform-kubestack//aws/cluster?ref=test-version", "")
+	k, p, v, err := parseKindProviderVersion("github.com/kbst/terraform-kubestack//aws/cluster?ref=test-version", "")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "cluster", k)
 	assert.Equal(t, "aws", p)
@@ -29,7 +30,8 @@ func TestParseKindProviderVersionEKSCluster(t *testing.T) {
 }
 
 func TestParseKindProviderVersionEKSNodePool(t *testing.T) {
-	k, p, v := parseKindProviderVersion("github.com/kbst/terraform-kubestack//aws/cluster/node-pool?ref=test-version", "")
+	k, p, v, err := parseKindProviderVersion("github.com/kbst/terraform-kubestack//aws/cluster/node-pool?ref=test-version", "")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "node_pool", k)
 	assert.Equal(t, "aws", p)
@@ -38,7 +40,8 @@ func TestParseKindProviderVersionEKSNodePool(t *testing.T) {
 
 // GKE
 func TestParseKindProviderVersionGKECluster(t *testing.T) {
-	k, p, v := parseKindProviderVersion("github.com/kbst/terraform-kubestack//google/cluster?ref=test-version", "")
+	k, p, v, err := parseKindProviderVersion("github.com/kbst/terraform-kubestack//google/cluster?ref=test-version", "")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "cluster", k)
 	assert.Equal(t, "google", p)
@@ -46,7 +49,8 @@ func TestParseKindProviderVersionGKECluster(t *testing.T) {
 }
 
 func TestParseKindProviderVersionGKENodePool(t *testing.T) {
-	k, p, v := parseKindProviderVersion("github.com/kbst/terraform-kubestack//google/cluster/node-pool?ref=test-version", "")
+	k, p, v, err := parseKindProviderVersion("github.com/kbst/terraform-kubestack//google/cluster/node-pool?ref=test-version", "")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "node_pool", k)
 	assert.Equal(t, "google", p)
@@ -55,7 +59,8 @@ func TestParseKindProviderVersionGKENodePool(t *testing.T) {
 
 // AKS
 func TestParseKindProviderVersionAKSCluster(t *testing.T) {
-	k, p, v := parseKindProviderVersion("github.com/kbst/terraform-kubestack//azurerm/cluster?ref=test-version", "")
+	k, p, v, err := parseKindProviderVersion("github.com/kbst/terraform-kubestack//azurerm/cluster?ref=test-version", "")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "cluster", k)
 	assert.Equal(t, "azurerm", p)
@@ -63,7 +68,8 @@ func TestParseKindProviderVersionAKSCluster(t *testing.T) {
 }
 
 func TestParseKindProviderVersionAKSNodePool(t *testing.T) {
-	k, p, v := parseKindProviderVersion("github.com/kbst/terraform-kubestack//azurerm/cluster/node-pool?ref=test-version", "")
+	k, p, v, err := parseKindProviderVersion("github.com/kbst/terraform-kubestack//azurerm/cluster/node-pool?ref=test-version", "")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "node_pool", k)
 	assert.Equal(t, "azurerm", p)
@@ -72,23 +78,10 @@ func TestParseKindProviderVersionAKSNodePool(t *testing.T) {
 
 // Service
 func TestParseKindProviderVersionService(t *testing.T) {
-	k, p, v := parseKindProviderVersion("kbst.xyz/catalog/test/kustomization", "test-version")
+	k, p, v, err := parseKindProviderVersion("kbst.xyz/catalog/test/kustomization", "test-version")
+	assert.Equal(t, nil, err)
 
 	assert.Equal(t, "service", k)
 	assert.Equal(t, "kustomization", p)
 	assert.Equal(t, "test-version", v)
-}
-
-func TestParseNodePoolClusterNameNameSuffix(t *testing.T) {
-	cn, ns := parseNodePoolClusteNameNameSuffix("cluster-name_node_pool_name_suffix")
-
-	assert.Equal(t, "cluster-name", cn)
-	assert.Equal(t, "name_suffix", ns)
-}
-
-func TestParseServiceClusteNameEntryName(t *testing.T) {
-	cn, en := parseServiceClusteNameEntryName("cluster_name_service_entry-name")
-
-	assert.Equal(t, "cluster_name", cn)
-	assert.Equal(t, "entry-name", en)
 }

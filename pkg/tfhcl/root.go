@@ -16,18 +16,20 @@ import (
 )
 
 type Root struct {
-	Parser         *hclparse.Parser
-	evalContext    *hcl.EvalContext
-	Variables      map[string][]Variable
-	VariableValues map[string]cty.Value
-	Modules        map[string][]Module
-	Providers      map[string][]Provider
-	Dockerfiles    map[string][]byte
+	Parser      *hclparse.Parser
+	evalContext *hcl.EvalContext
+	Variables   map[string][]Variable
+	Modules     map[string][]Module
+	Providers   map[string][]Provider
+	Dockerfiles map[string][]byte
 }
 
 func NewRoot() *Root {
 	r := Root{
-		evalContext: nil,
+		evalContext: &hcl.EvalContext{
+			Variables: map[string]cty.Value{},
+			Functions: nil,
+		},
 		Variables:   make(map[string][]Variable),
 		Modules:     make(map[string][]Module),
 		Providers:   make(map[string][]Provider),
@@ -46,6 +48,8 @@ func (r *Root) Read(path string) (err error) {
 	}
 
 	diags := hcl.Diagnostics{}
+
+	// variable definitions and defaults
 	for _, f := range files {
 		if f.IsDir() {
 			continue
@@ -66,7 +70,59 @@ func (r *Root) Read(path string) (err error) {
 		if !slices.Contains(maps.Keys(r.Variables), fp) {
 			r.Variables[fp] = []Variable{}
 		}
-		r.Variables[fp] = append(r.Variables[fp], kb.Variables...)
+
+		for _, vd := range kb.Variables {
+			r.Variables[fp] = append(r.Variables[fp], vd)
+
+			r.evalContext.Variables[vd.Name] = vd.Default
+		}
+	}
+
+	// variable values from tfvar files
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+
+		if f.Name() != "terraform.tfvars" && !strings.HasSuffix(f.Name(), ".auto.tfvars") {
+			continue
+		}
+
+		fp := filepath.Join(path, f.Name())
+		hclf, diag := r.Parser.ParseHCLFile(fp)
+		diags.Extend(diag)
+
+		vv := make(map[string]cty.Value)
+		moreDiags := gohcl.DecodeBody(hclf.Body, r.evalContext, &vv)
+		diags = append(diags, moreDiags...)
+
+		for k, v := range vv {
+			r.evalContext.Variables[k] = v
+		}
+	}
+
+	// parse, now that we know the evalContext
+	for _, f := range files {
+		if f.IsDir() {
+			continue
+		}
+
+		if !strings.HasSuffix(f.Name(), ".tf") {
+			continue
+		}
+
+		fp := filepath.Join(path, f.Name())
+		hclf, diag := r.Parser.ParseHCLFile(fp)
+		diags.Extend(diag)
+
+		kb := Blocks{}
+		moreDiags := gohcl.DecodeBody(hclf.Body, r.evalContext, &kb)
+		diags = append(diags, moreDiags...)
+
+		if !slices.Contains(maps.Keys(r.Providers), fp) {
+			r.Providers[fp] = []Provider{}
+		}
+		r.Providers[fp] = append(r.Providers[fp], kb.Providers...)
 
 		for i, mod := range kb.Modules {
 			// parse raw module providers
@@ -78,22 +134,60 @@ func (r *Root) Read(path string) (err error) {
 				mod.Providers[k] = v
 			}
 
+			// determine ParentCluster
+			// based on provider alias for service modules
+			if pn, ok := mod.Providers["kustomization"]; ok {
+				for _, providers := range r.Providers {
+					for _, p := range providers {
+						for _, t := range p.KubeconfigRaw.Variables() {
+							spl := t.SimpleSplit()
+							n := spl.Rel[0].(hcl.TraverseAttr).Name
+							if spl.RootName() == "module" && n == pn {
+								mod.ParentCluster = n
+								break
+							}
+						}
+					}
+				}
+			}
+
+			// determine ParentCluster
+			// based on cluster_name or cluster_metadata for node-pool modules
+			for _, t := range mod.ClusterNameRaw.Variables() {
+				spl := t.SimpleSplit()
+				if spl.RootName() == "module" {
+					mod.ParentCluster = spl.Rel[0].(hcl.TraverseAttr).Name
+				}
+			}
+
+			for _, t := range mod.ClusterMetadataRaw.Variables() {
+				spl := t.SimpleSplit()
+				if spl.RootName() == "module" {
+					mod.ParentCluster = spl.Rel[0].(hcl.TraverseAttr).Name
+				}
+			}
+
 			// parse raw module configuration
 			val, _ := mod.ConfigurationRaw.Value(r.evalContext)
 
 			if !val.IsNull() {
-				mod.Configuration = make(map[string]map[string]cty.Value)
-				mod.Configuration = make(map[string]map[string]cty.Value)
-
 				mod.Configuration = make(map[string]map[string]cty.Value)
 
 				for k, v := range val.AsValueMap() {
 					mod.Configuration[k] = make(map[string]cty.Value)
 
 					for ik, iv := range v.AsValueMap() {
-						if iv.IsNull() && !iv.IsWhollyKnown() {
+						// get the variable's value
+						if iv.Type().HasDynamicTypes() {
+							if v, ok := r.GetVariableValue(ik); ok {
+								iv = v
+							}
+						}
+
+						if iv.IsNull() || !iv.IsWhollyKnown() {
 							continue
 						}
+
 						mod.Configuration[k][ik] = iv
 					}
 				}
@@ -106,31 +200,6 @@ func (r *Root) Read(path string) (err error) {
 			r.Modules[fp] = []Module{}
 		}
 		r.Modules[fp] = append(r.Modules[fp], kb.Modules...)
-
-		if !slices.Contains(maps.Keys(r.Providers), fp) {
-			r.Providers[fp] = []Provider{}
-		}
-		r.Providers[fp] = append(r.Providers[fp], kb.Providers...)
-	}
-
-	for _, f := range files {
-		if f.IsDir() {
-			continue
-		}
-
-		if f.Name() != "config.auto.tfvars" {
-			continue
-		}
-
-		fp := filepath.Join(path, f.Name())
-		hclf, diag := r.Parser.ParseHCLFile(fp)
-		diags.Extend(diag)
-
-		vv := make(map[string]cty.Value)
-		moreDiags := gohcl.DecodeBody(hclf.Body, nil, &vv)
-		diags = append(diags, moreDiags...)
-
-		r.VariableValues = vv
 	}
 
 	if diags.HasErrors() {
@@ -147,6 +216,11 @@ func (r *Root) Read(path string) (err error) {
 	}
 
 	return nil
+}
+
+func (r *Root) GetVariableValue(name string) (value cty.Value, ok bool) {
+	v, ok := r.evalContext.Variables[name]
+	return v, ok
 }
 
 func (r *Root) Write() (err error) {

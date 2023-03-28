@@ -9,6 +9,7 @@ import (
 )
 
 type Service struct {
+	tfMod          *tfhcl.Module
 	EntryName      string
 	ClusterName    string
 	Provider       string
@@ -31,5 +32,8 @@ func (s *Service) ToHCL() map[string]*hclwrite.File {
 }
 
 func (s *Service) Name() string {
+	if s.tfMod != nil {
+		return s.tfMod.Name
+	}
 	return fmt.Sprintf("%s_%s_%s", s.ClusterName, "service", s.EntryName)
 }
