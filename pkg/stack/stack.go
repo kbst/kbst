@@ -265,6 +265,22 @@ func (s *Stack) FromPath(p string) error {
 		}
 	}
 
+	sort.Slice(s.Clusters, func(i, j int) bool {
+		return s.Clusters[i].Name() < s.Clusters[j].Name()
+	})
+
+	sort.Slice(s.NodePools, func(i, j int) bool {
+		return s.NodePools[i].Name() < s.NodePools[j].Name()
+	})
+
+	sort.Slice(s.Services, func(i, j int) bool {
+		return s.Services[i].Name() < s.Services[j].Name()
+	})
+
+	sort.Slice(s.Modules, func(i, j int) bool {
+		return s.Modules[i].Name() < s.Modules[j].Name()
+	})
+
 	return nil
 }
 
