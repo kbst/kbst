@@ -9,7 +9,7 @@ import (
 )
 
 type Service struct {
-	tfMod          *tfhcl.Module
+	mod            *tfhcl.Module
 	EntryName      string
 	ClusterName    string
 	Provider       string
@@ -17,8 +17,8 @@ type Service struct {
 	Configurations []Configuration
 }
 
-func (s *Service) ToHCL() map[string]*hclwrite.File {
-	files := make(map[string]*hclwrite.File)
+func (s *Service) ToHCL() map[string][]byte {
+	files := make(map[string][]byte)
 
 	f := hclwrite.NewEmptyFile()
 
@@ -26,14 +26,14 @@ func (s *Service) ToHCL() map[string]*hclwrite.File {
 	version := strings.TrimPrefix(s.Version, "v")
 
 	tfhcl.ModuleService(f, s.Name(), s.ClusterName, source, version, convertToTfhclConfiguration(s.Configurations))
-	files[fmt.Sprintf("%s.tf", s.Name())] = f
+	files[fmt.Sprintf("%s.tf", s.Name())] = f.Bytes()
 
 	return files
 }
 
 func (s *Service) Name() string {
-	if s.tfMod != nil {
-		return s.tfMod.Name
+	if s.mod != nil {
+		return s.mod.Name
 	}
 	return fmt.Sprintf("%s_%s_%s", s.ClusterName, "service", s.EntryName)
 }

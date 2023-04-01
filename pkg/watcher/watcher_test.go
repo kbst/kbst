@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 	"testing"
 	"time"
@@ -12,7 +11,7 @@ import (
 )
 
 var cwd, _ = os.Getwd()
-var fixturesPath = path.Join(cwd, "../", "../", "test_fixtures")
+var fixturesPath = filepath.Join(cwd, "../", "../", "test_fixtures")
 
 func TestLastEvent(t *testing.T) {
 	le := lastEvent{}

@@ -29,14 +29,6 @@ var initRelease string
 var initGitRef string
 var initEnvNames string
 
-// repositoryCmd represents the repository command
-var repositoryCmd = &cobra.Command{
-	Use:     "repository",
-	Aliases: []string{"repo"},
-	Short:   "Create and change Kubestack repositories",
-	Hidden:  true,
-}
-
 var initCmd = &cobra.Command{
 	Use:   "init command [flags]",
 	Short: "Scaffold a new Kubestack repository",
@@ -147,29 +139,6 @@ func initStarter(starter string, args []string) {
 	}
 }
 
-var repositoryGenerateCmd = &cobra.Command{
-	Use:    "generate <json_path>",
-	Args:   cobra.ExactArgs(1),
-	Hidden: true,
-	Run: func(cmd *cobra.Command, args []string) {
-		json_path := args[0]
-		cj := util.CliJSON{}
-		err := cj.Load(util.CachedDownloader{})
-		if err != nil {
-			log.Fatal(err)
-		}
-		r := cli.Repo{
-			Catalog:    cj.Catalog,
-			Framework:  cj.Framework,
-			Downloader: util.CachedDownloader{},
-		}
-		err = r.Generate(json_path, path)
-		if err != nil {
-			log.Fatal(err)
-		}
-	},
-}
-
 func init() {
 	rootCmd.AddCommand(initCmd)
 
@@ -188,7 +157,4 @@ func init() {
 
 	initCmd.AddCommand(initGKECmd)
 	initGKECmd.Flags().AddFlagSet(clusterAddGKECmd.Flags())
-
-	rootCmd.AddCommand(repositoryCmd)
-	repositoryCmd.AddCommand(repositoryGenerateCmd)
 }

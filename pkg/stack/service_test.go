@@ -35,6 +35,6 @@ func TestServiceToHCL(t *testing.T) {
 	assert.ElementsMatch(t, maps.Keys(files), []string{"aks_kbstaks_test-continent_service_test.tf"})
 
 	for _, d := range files {
-		assert.NotEqual(t, 0, len(d.Bytes()))
+		assert.NotEqual(t, 0, len(d))
 	}
 }

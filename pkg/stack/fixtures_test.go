@@ -2,8 +2,8 @@ package stack
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 )
 
 var cwd, _ = os.Getwd()
-var fixturesPath = path.Join(cwd, "test_fixtures")
+var fixturesPath = filepath.Join(cwd, "test_fixtures")

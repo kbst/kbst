@@ -11,7 +11,7 @@ import (
 )
 
 type Cluster struct {
-	tfMod          *tfhcl.Module
+	mod            *tfhcl.Module
 	NamePrefix     string
 	Provider       string
 	Region         string
@@ -53,7 +53,9 @@ func (c *Cluster) Validate(cj util.CliJSON) error {
 		zones = strings.Split(baseCfg["cluster_availability_zones"].AsString(), ",")
 	case "azurerm":
 		instanceType = baseCfg["default_node_pool_vm_size"].AsString()
-		zones = strings.Split(baseCfg["availability_zones"].AsString(), ",")
+		if v, ok := baseCfg["availability_zones"]; ok {
+			zones = strings.Split(v.AsString(), ",")
+		}
 	case "google":
 		instanceType = baseCfg["cluster_machine_type"].AsString()
 		zones = strings.Split(baseCfg["cluster_node_locations"].AsString(), ",")
@@ -79,19 +81,19 @@ func (c *Cluster) Validate(cj util.CliJSON) error {
 	return nil
 }
 
-func (c *Cluster) ToHCL() map[string]*hclwrite.File {
-	files := make(map[string]*hclwrite.File)
+func (c *Cluster) ToHCL() map[string][]byte {
+	files := make(map[string][]byte)
 
 	// _cluster.tf
 	fc := hclwrite.NewEmptyFile()
 
 	tfhcl.ModuleCluster(fc, c.Name(), c.Provider, c.Name(), c.Version, convertToTfhclConfiguration(c.Configurations))
-	files[fmt.Sprintf("%s_cluster.tf", c.Name())] = fc
+	files[fmt.Sprintf("%s_cluster.tf", c.Name())] = fc.Bytes()
 
 	// _providers.tf
 	fp := hclwrite.NewEmptyFile()
 	tfhcl.BlockProvider(fp, c.Provider, c.Name(), c.Region)
-	files[fmt.Sprintf("%s_providers.tf", c.Name())] = fp
+	files[fmt.Sprintf("%s_providers.tf", c.Name())] = fp.Bytes()
 
 	return files
 }
@@ -107,8 +109,8 @@ func (c *Cluster) cloudK8sPrefix() string {
 }
 
 func (c *Cluster) Name() string {
-	if c.tfMod != nil {
-		return c.tfMod.Name
+	if c.mod != nil {
+		return c.mod.Name
 	}
 
 	return fmt.Sprintf("%s_%s_%s", c.cloudK8sPrefix(), c.NamePrefix, c.Region)

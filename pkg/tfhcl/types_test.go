@@ -7,8 +7,8 @@ import (
 )
 
 func TestTypeProviderVersion(t *testing.T) {
-	r := NewRoot()
-	err := r.Read("fixtures")
+	r := NewRoot("fixtures")
+	err := r.Read()
 	assert.Equal(t, nil, err)
 
 	for _, fs := range r.Modules {
