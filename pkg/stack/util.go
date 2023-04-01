@@ -18,55 +18,6 @@ func parsePrefixRegion(n string) (prefix, region string, err error) {
 	return nspl[1], nspl[2], nil
 }
 
-func parseKindProviderVersion(s, v string) (kind, provider, version string, err error) {
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//") {
-		version = strings.Split(s, "?ref=")[1]
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//aws/cluster") {
-		kind = "cluster"
-		provider = "aws"
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//aws/cluster/elb-dns") {
-		kind = "elb-dns"
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//google/cluster") {
-		kind = "cluster"
-		provider = "google"
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//azurerm/cluster") {
-		kind = "cluster"
-		provider = "azurerm"
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//aws/cluster/node-pool") {
-		kind = "node_pool"
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//google/cluster/node-pool") {
-		kind = "node_pool"
-	}
-
-	if strings.HasPrefix(s, "github.com/kbst/terraform-kubestack//azurerm/cluster/node-pool") {
-		kind = "node_pool"
-	}
-
-	if strings.HasPrefix(s, "kbst.xyz/catalog") {
-		kind = "service"
-		provider = "kustomization"
-		version = v
-	}
-
-	if kind != "" && provider != "" && version != "" {
-		return kind, provider, version, nil
-	}
-
-	return kind, provider, version, fmt.Errorf("could not detect kind, provider and version for: source: %q, version: %q", s, v)
-}
-
 func parseConfiguration(cbk string, cm map[string]map[string]cty.Value) (cfgs []Configuration) {
 	for name, attrs := range cm {
 		cfg := Configuration{

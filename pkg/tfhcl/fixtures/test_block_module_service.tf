@@ -3,7 +3,7 @@ module "test_service" {
     kustomization = kustomization.test_cluster
   }
 
-  source  = "test_source"
+  source  = "kbst.xyz/catalog/test/kustomization"
   version = "0.0.0-test.0"
 
   configuration = {

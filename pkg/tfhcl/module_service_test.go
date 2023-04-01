@@ -24,7 +24,7 @@ func TestBlockModuleService(t *testing.T) {
 		},
 	}
 
-	ModuleService(fa, "test_service", "test_cluster", "test_source", "0.0.0-test.0", cfgs)
+	ModuleService(fa, "test_service", "test_cluster", "kbst.xyz/catalog/test/kustomization", "0.0.0-test.0", cfgs)
 
 	fn := "fixtures/test_block_module_service.tf"
 	d, _ := os.ReadFile(fn)
