@@ -1,6 +1,9 @@
 package tfhcl
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -85,4 +88,53 @@ type DataSource struct {
 type Output struct {
 	Name string   `hcl:"name,label"`
 	Body hcl.Body `hcl:",remain"`
+}
+
+func (m *Module) TypeProviderVersion() (t, p, v string, err error) {
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//") {
+		v = strings.Split(m.Source, "?ref=")[1]
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//aws/cluster") {
+		t = "cluster"
+		p = "aws"
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//aws/cluster/elb-dns") {
+		t = "elb-dns"
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//google/cluster") {
+		t = "cluster"
+		p = "google"
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//azurerm/cluster") {
+		t = "cluster"
+		p = "azurerm"
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//aws/cluster/node-pool") {
+		t = "node_pool"
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//google/cluster/node-pool") {
+		t = "node_pool"
+	}
+
+	if strings.HasPrefix(m.Source, "github.com/kbst/terraform-kubestack//azurerm/cluster/node-pool") {
+		t = "node_pool"
+	}
+
+	if strings.HasPrefix(m.Source, "kbst.xyz/catalog") {
+		t = "service"
+		p = "kustomization"
+		v = m.Version
+	}
+
+	if t != "" && p != "" && v != "" {
+		return t, p, v, nil
+	}
+
+	return t, p, v, fmt.Errorf("could not detect type, provider and version for: source: %q, version: %q", m.Source, m.Version)
 }

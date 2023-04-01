@@ -1,5 +1,5 @@
-module "aks_kbst_westeurope" {
-  source = "github.com/kbst/terraform-kubestack//aks/cluster?ref=0.0.0-test.0"
+module "gke_kbst_europe-west1" {
+  source = "github.com/kbst/terraform-kubestack//google/cluster?ref=0.0.0-test.0"
 
   configuration = {
     apps = {

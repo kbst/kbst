@@ -73,7 +73,7 @@ func (s *Stack) FromPath(p string) error {
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
-			kind, provider, version, err := parseKindProviderVersion(m.Source, m.Version)
+			kind, provider, version, err := m.TypeProviderVersion()
 			if err != nil {
 				continue
 			}
@@ -166,7 +166,7 @@ func (s *Stack) FromPath(p string) error {
 
 	for _, mf := range s.root.Modules {
 		for _, m := range mf {
-			kind, provider, version, err := parseKindProviderVersion(m.Source, m.Version)
+			kind, provider, version, err := m.TypeProviderVersion()
 			if err != nil {
 				// if we can't parse source and version
 				// we consider it a non Kubestack module

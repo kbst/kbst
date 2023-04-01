@@ -22,16 +22,12 @@ func TestRead(t *testing.T) {
 		assert.Equal(t, expL, len(vs), fmt.Sprintf("%s: found %d unexpected variables", fn, len(vs)))
 	}
 
-	// r.VariableValues
-	//assert.Equal(t, 1, len(r.VariableValues), nil)
-	//assert.Equal(t, cty.Value(cty.StringVal("value")), r.VariableValues["testvar"], nil)
-
 	// r.Modules
 	mCount := 0
 	for _, ms := range r.Modules {
 		mCount += len(ms)
 	}
-	assert.Equal(t, 10, mCount, nil)
+	assert.Equal(t, 14, mCount, nil)
 
 	// r.Providers
 	for fn, ps := range r.Providers {

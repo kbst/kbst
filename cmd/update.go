@@ -51,26 +51,33 @@ var updateCmd = &cobra.Command{
 					continue
 				}
 
-				source := r.Modules[n][i].Source
+				m := r.Modules[n][i]
+
+				t, _, _, err := m.TypeProviderVersion()
+				if err != nil {
+					continue
+				}
+
 				var latestVersion string
-				switch ref := strings.Contains(source, "?ref="); ref {
-				case true:
-					// module has version in source
-					// like framework modules currently do
+				if t == "cluster" || t == "node-pool" || t == "elb-dns" {
 					latestVersion = cj.Framework.Versions[0].Name
-				case false:
-					// module has source and version
-					// like cluster service modules currently do
-					name := strings.Split(source, "/")[2]
+				}
+
+				if t == "service" {
+					name := strings.Split(m.Source, "/")[2]
 					latestVersion = cj.Catalog[name].Versions[0].Name
+				}
+
+				if latestVersion == "" {
+					continue
 				}
 
 				if b.Body().GetAttribute("version") != nil {
 					v := strings.TrimPrefix(latestVersion, "v")
 					b.Body().SetAttributeValue("version", cty.StringVal(v))
 				} else {
-					currentRef := strings.Split(source, "?ref=")[1]
-					s := strings.Replace(source, currentRef, latestVersion, 1)
+					currentRef := strings.Split(m.Source, "?ref=")[1]
+					s := strings.Replace(m.Source, currentRef, latestVersion, 1)
 					b.Body().SetAttributeValue("source", cty.StringVal(s))
 				}
 			}
