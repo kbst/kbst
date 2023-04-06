@@ -90,6 +90,6 @@ func TestNodePoolToHCL(t *testing.T) {
 	assert.ElementsMatch(t, maps.Keys(files), []string{"gke_kbstgke_test-region1_node_pool_test-extra.tf"})
 
 	for _, d := range files {
-		assert.NotEqual(t, 0, len(d.Bytes()))
+		assert.NotEqual(t, 0, len(d))
 	}
 }

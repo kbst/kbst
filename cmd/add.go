@@ -105,9 +105,9 @@ var clusterAddAKSCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -127,12 +127,7 @@ var clusterAddAKSCmd = &cobra.Command{
 			"availability_zones":           cty.StringVal(strings.Join(zones, ",")),
 		}
 
-		err = s.AddCluster(namePrefix, "azurerm", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
+		_, err = s.AddCluster(namePrefix, "azurerm", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -153,9 +148,9 @@ var clusterAddEKSCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -174,12 +169,7 @@ var clusterAddEKSCmd = &cobra.Command{
 			"cluster_max_size":           cty.NumberIntVal(clusterEKSMaxNodes),
 		}
 
-		err = s.AddCluster(namePrefix, "aws", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
+		_, err = s.AddCluster(namePrefix, "aws", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -201,9 +191,9 @@ var clusterAddGKECmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -225,12 +215,7 @@ var clusterAddGKECmd = &cobra.Command{
 			"cluster_min_master_version": cty.StringVal("1.20"),
 		}
 
-		err = s.AddCluster(namePrefix, "google", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
+		_, err = s.AddCluster(namePrefix, "google", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -261,9 +246,9 @@ var nodePoolAddAKSCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -284,12 +269,7 @@ var nodePoolAddAKSCmd = &cobra.Command{
 			baseCfg["os_disk_size_gb"] = cty.NumberIntVal(nodePoolAKSDiskSize)
 		}
 
-		err = s.AddNodePool(clusterName, poolName, stack.GenerateConfigurations(s.Environments, baseCfg))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
+		_, err = s.AddNodePool(clusterName, poolName, stack.GenerateConfigurations(s.Environments, baseCfg))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -310,9 +290,9 @@ var nodePoolAddEKSCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -337,12 +317,7 @@ var nodePoolAddEKSCmd = &cobra.Command{
 			baseCfg["disk_size"] = cty.NumberIntVal(nodePoolEKSDiskSize)
 		}
 
-		err = s.AddNodePool(clusterName, poolName, stack.GenerateConfigurations(s.Environments, baseCfg))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
+		_, err = s.AddNodePool(clusterName, poolName, stack.GenerateConfigurations(s.Environments, baseCfg))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -363,9 +338,9 @@ var nodePoolAddGKECmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -398,12 +373,7 @@ var nodePoolAddGKECmd = &cobra.Command{
 			baseCfg["disk_size_gb"] = cty.NumberIntVal(nodePoolGKEDiskSize)
 		}
 
-		err = s.AddNodePool(clusterName, poolName, stack.GenerateConfigurations(s.Environments, baseCfg))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
+		_, err = s.AddNodePool(clusterName, poolName, stack.GenerateConfigurations(s.Environments, baseCfg))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -424,29 +394,26 @@ var serviceAddCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, c := range s.Clusters {
+		clusters := s.Clusters()
+
+		for _, c := range clusters {
 			currentClusterName := c.Name()
 
 			if serviceClusterName != "" && serviceClusterName != currentClusterName {
 				continue
 			}
 
-			err = s.AddService(currentClusterName, entryName, serviceRelease)
+			_, err = s.AddService(currentClusterName, entryName, serviceRelease)
 			if err != nil {
 				log.Fatal(err)
 			}
-		}
-
-		err = s.WriteChanges()
-		if err != nil {
-			log.Fatal(err)
 		}
 	},
 }

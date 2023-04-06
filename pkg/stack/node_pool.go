@@ -11,7 +11,7 @@ import (
 )
 
 type NodePool struct {
-	tfMod          *tfhcl.Module
+	mod            *tfhcl.Module
 	PoolName       string
 	ClusterName    string
 	Provider       string
@@ -86,19 +86,19 @@ func (np *NodePool) Validate(cj util.CliJSON) error {
 	return nil
 }
 
-func (np *NodePool) ToHCL() map[string]*hclwrite.File {
-	files := make(map[string]*hclwrite.File)
+func (np *NodePool) ToHCL() map[string][]byte {
+	files := make(map[string][]byte)
 	f := hclwrite.NewEmptyFile()
 
 	tfhcl.ModuleNodePool(f, np.Name(), np.Provider, np.ClusterName, np.Version, convertToTfhclConfiguration(np.Configurations))
-	files[fmt.Sprintf("%s.tf", np.Name())] = f
+	files[fmt.Sprintf("%s.tf", np.Name())] = f.Bytes()
 
 	return files
 }
 
 func (np *NodePool) Name() string {
-	if np.tfMod != nil {
-		return np.tfMod.Name
+	if np.mod != nil {
+		return np.mod.Name
 	}
 	return fmt.Sprintf("%s_%s_%s", np.ClusterName, "node_pool", np.PoolName)
 }

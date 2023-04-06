@@ -8,8 +8,8 @@ import (
 )
 
 func TestRead(t *testing.T) {
-	r := NewRoot()
-	err := r.Read("fixtures")
+	r := NewRoot("fixtures")
+	err := r.Read()
 
 	assert.Equal(t, nil, err)
 
@@ -37,7 +37,17 @@ func TestRead(t *testing.T) {
 		}
 		assert.Equal(t, expL, len(ps), fmt.Sprintf("%s: found %d unexpected providers", fn, len(ps)))
 	}
+}
 
-	// r.Dockerfiles
-	assert.Equal(t, 1, len(r.Dockerfiles), nil)
+func TestReadTwoModules(t *testing.T) {
+	r := NewRoot("fixtures")
+	err := r.Read()
+
+	assert.Equal(t, nil, err)
+
+	mods := r.Modules["fixtures/test_root_read_two_modules.tf"]
+
+	assert.Len(t, mods, 2, nil)
+	assert.Equal(t, "test_mod1", mods[0].Name, nil)
+	assert.Equal(t, "test_mod2", mods[1].Name, nil)
 }

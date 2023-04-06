@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
+	"github.com/kbst/kbst/pkg/stack"
 	"github.com/kbst/kbst/pkg/tfhcl"
 	"github.com/kbst/kbst/pkg/util"
 	"github.com/spf13/cobra"
@@ -37,14 +38,21 @@ var updateCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
-		err = r.Read(path)
+		r := tfhcl.NewRoot(path)
+
+		s := stack.NewStack(r, cj)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatalln(err)
 		}
 
+		toWrite := map[string][]byte{}
+
 		for n, f := range r.Parser.Files() {
-			wf, _ := hclwrite.ParseConfig(f.Bytes, n, hcl.InitialPos)
+			wf, diag := hclwrite.ParseConfig(f.Bytes, n, hcl.InitialPos)
+			if diag.HasErrors() {
+				continue
+			}
 
 			for i, b := range wf.Body().Blocks() {
 				if b.Type() != "module" {
@@ -65,7 +73,9 @@ var updateCmd = &cobra.Command{
 
 				if t == "service" {
 					name := strings.Split(m.Source, "/")[2]
-					latestVersion = cj.Catalog[name].Versions[0].Name
+					if vers, ok := cj.Catalog[name]; ok {
+						latestVersion = vers.Versions[0].Name
+					}
 				}
 
 				if latestVersion == "" {
@@ -82,10 +92,18 @@ var updateCmd = &cobra.Command{
 				}
 			}
 
-			f.Bytes = wf.Bytes()
+			toWrite[n] = wf.Bytes()
 		}
 
-		r.Write()
+		err = r.WriteFiles(toWrite)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		err = r.Write()
+		if err != nil {
+			log.Fatalln(err)
+		}
 	},
 }
 

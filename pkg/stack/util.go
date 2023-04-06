@@ -1,22 +1,9 @@
 package stack
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/kbst/kbst/pkg/tfhcl"
 	"github.com/zclconf/go-cty/cty"
 )
-
-func parsePrefixRegion(n string) (prefix, region string, err error) {
-	nspl := strings.Split(n, "_")
-
-	if len(nspl) < 3 {
-		return "", "", fmt.Errorf("can not parse prefix and region from %q", n)
-	}
-
-	return nspl[1], nspl[2], nil
-}
 
 func parseConfiguration(cbk string, cm map[string]map[string]cty.Value) (cfgs []Configuration) {
 	for name, attrs := range cm {

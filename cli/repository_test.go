@@ -55,6 +55,7 @@ func TestRepoInitEKS(t *testing.T) {
 	}
 
 	baseCfg := map[string]cty.Value{
+		"name_prefix":                cty.StringVal("test"),
 		"cluster_availability_zones": cty.StringVal("eu-west-1a,eu-west-1b,eu-west-1c"),
 		"cluster_instance_type":      cty.StringVal("m5a.2xlarge"),
 		"cluster_min_size":           cty.NumberIntVal(3),
@@ -64,10 +65,18 @@ func TestRepoInitEKS(t *testing.T) {
 
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
 	err := r.Init("eks", "kubestack.example.com", "test", "eu-west-1", []string{"apps", "ops"}, baseCfg, "latest", "", p)
-
 	assert.Equal(t, nil, err, nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-eks"), nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-eks", ".git"), nil)
+
+	fp := filepath.Join(p, "kubestack-starter-eks")
+	assert.DirExists(t, fp, nil)
+	assert.DirExists(t, filepath.Join(fp, ".git"), nil)
+	assert.FileExists(t, filepath.Join(fp, "eks_test_eu-west-1_cluster.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "eks_test_eu-west-1_providers.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "versions.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "variables.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "config.auto.tfvars"), nil)
+	assert.FileExists(t, filepath.Join(fp, "Dockerfile"), nil)
+	assert.FileExists(t, filepath.Join(fp, "README.md"), nil)
 
 	os.RemoveAll(p)
 }
@@ -81,7 +90,9 @@ func TestRepoInitGKE(t *testing.T) {
 	}
 
 	baseCfg := map[string]cty.Value{
+		"name_prefix":                cty.StringVal("test"),
 		"project_id":                 cty.StringVal("kubestack-testing"),
+		"region":                     cty.StringVal("europe-west4"),
 		"cluster_min_node_count":     cty.NumberIntVal(1),
 		"cluster_initial_node_count": cty.NumberIntVal(1),
 		"cluster_max_node_count":     cty.NumberIntVal(3),
@@ -92,10 +103,18 @@ func TestRepoInitGKE(t *testing.T) {
 
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
 	err := r.Init("gke", "kubestack.example.com", "test", "europe-west4", []string{"apps", "ops"}, baseCfg, "latest", "", p)
-
 	assert.Equal(t, nil, err, nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-gke"), nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-gke", ".git"), nil)
+
+	fp := filepath.Join(p, "kubestack-starter-gke")
+	assert.DirExists(t, fp, nil)
+	assert.DirExists(t, filepath.Join(fp, ".git"), nil)
+	assert.FileExists(t, filepath.Join(fp, "gke_test_europe-west4_cluster.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "gke_test_europe-west4_providers.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "versions.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "variables.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "config.auto.tfvars"), nil)
+	assert.FileExists(t, filepath.Join(fp, "Dockerfile"), nil)
+	assert.FileExists(t, filepath.Join(fp, "README.md"), nil)
 
 	os.RemoveAll(p)
 }
@@ -109,6 +128,7 @@ func TestRepoInitAKS(t *testing.T) {
 	}
 
 	baseCfg := map[string]cty.Value{
+		"name_prefix":                  cty.StringVal("test"),
 		"resource_group":               cty.StringVal("kubestack-testing"),
 		"default_node_pool_vm_size":    cty.StringVal("Standard_D4_v4"),
 		"default_node_pool_min_count":  cty.NumberIntVal(3),
@@ -119,10 +139,18 @@ func TestRepoInitAKS(t *testing.T) {
 
 	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
 	err := r.Init("aks", "kubestack.example.com", "test", "westeurope", []string{"apps", "ops"}, baseCfg, "latest", "", p)
-
 	assert.Equal(t, nil, err, nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-aks"), nil)
-	assert.DirExists(t, filepath.Join(p, "kubestack-starter-aks", ".git"), nil)
+
+	fp := filepath.Join(p, "kubestack-starter-aks")
+	assert.DirExists(t, fp, nil)
+	assert.DirExists(t, filepath.Join(fp, ".git"), nil)
+	assert.FileExists(t, filepath.Join(fp, "aks_test_westeurope_cluster.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "aks_test_westeurope_providers.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "versions.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "variables.tf"), nil)
+	assert.FileExists(t, filepath.Join(fp, "config.auto.tfvars"), nil)
+	assert.FileExists(t, filepath.Join(fp, "Dockerfile"), nil)
+	assert.FileExists(t, filepath.Join(fp, "README.md"), nil)
 
 	os.RemoveAll(p)
 }

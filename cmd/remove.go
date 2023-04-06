@@ -37,19 +37,14 @@ var removeCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		err = s.Remove(name)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = s.WriteChanges()
 		if err != nil {
 			log.Fatal(err)
 		}

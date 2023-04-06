@@ -1,6 +1,7 @@
 package tfhcl
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,154 +17,131 @@ import (
 )
 
 type Root struct {
+	Path        string
 	Parser      *hclparse.Parser
 	evalContext *hcl.EvalContext
 	Variables   map[string][]Variable
 	Modules     map[string][]Module
 	Providers   map[string][]Provider
-	Dockerfiles map[string][]byte
+	toWrite     map[string][]byte
+	toDelete    []string
 }
 
-func NewRoot() *Root {
+func NewRoot(path string) *Root {
 	r := Root{
-		evalContext: &hcl.EvalContext{
-			Variables: map[string]cty.Value{},
-			Functions: nil,
-		},
-		Variables:   make(map[string][]Variable),
-		Modules:     make(map[string][]Module),
-		Providers:   make(map[string][]Provider),
-		Dockerfiles: make(map[string][]byte),
+		Path: path,
 	}
-	p := hclparse.NewParser()
-	r.Parser = p
+
+	r.clear()
 
 	return &r
 }
 
-func (r *Root) Read(path string) (err error) {
-	files, err := os.ReadDir(path)
+func (r *Root) clear() {
+	r.Parser = hclparse.NewParser()
+
+	r.evalContext = &hcl.EvalContext{
+		Variables: map[string]cty.Value{},
+		Functions: nil,
+	}
+	r.Variables = make(map[string][]Variable)
+	r.Modules = make(map[string][]Module)
+	r.Providers = make(map[string][]Provider)
+	r.toWrite = make(map[string][]byte)
+	r.toDelete = make([]string, 0)
+}
+
+func (r *Root) Read() (err error) {
+	// if we re-read, clear the data
+	r.clear()
+
+	files, err := os.ReadDir(r.Path)
 	if err != nil {
 		return err
 	}
 
 	diags := hcl.Diagnostics{}
 
-	// variable definitions and defaults
 	for _, f := range files {
 		if f.IsDir() {
 			continue
 		}
 
-		if !strings.HasSuffix(f.Name(), ".tf") {
+		fp := filepath.Join(r.Path, f.Name())
+		_, diag := r.Parser.ParseHCLFile(fp)
+		diags.Extend(diag)
+	}
+
+	return r.decode()
+}
+
+func (r *Root) decode() (err error) {
+	diags := hcl.Diagnostics{}
+
+	// variable definitions, defaults and providers
+	for k, v := range r.Parser.Files() {
+		if !strings.HasSuffix(k, ".tf") {
 			continue
 		}
 
-		fp := filepath.Join(path, f.Name())
-		hclf, diag := r.Parser.ParseHCLFile(fp)
-		diags.Extend(diag)
-
 		kb := Blocks{}
-		moreDiags := gohcl.DecodeBody(hclf.Body, r.evalContext, &kb)
+		moreDiags := gohcl.DecodeBody(v.Body, r.evalContext, &kb)
 		diags = append(diags, moreDiags...)
 
-		if !slices.Contains(maps.Keys(r.Variables), fp) {
-			r.Variables[fp] = []Variable{}
+		if !slices.Contains(maps.Keys(r.Variables), k) {
+			r.Variables[k] = []Variable{}
 		}
 
 		for _, vd := range kb.Variables {
-			r.Variables[fp] = append(r.Variables[fp], vd)
-
+			r.Variables[k] = append(r.Variables[k], vd)
 			r.evalContext.Variables[vd.Name] = vd.Default
 		}
+
+		if !slices.Contains(maps.Keys(r.Providers), k) {
+			r.Providers[k] = []Provider{}
+		}
+		r.Providers[k] = append(r.Providers[k], kb.Providers...)
 	}
 
 	// variable values from tfvar files
-	for _, f := range files {
-		if f.IsDir() {
+	for k, v := range r.Parser.Files() {
+		if k != "terraform.tfvars" && !strings.HasSuffix(k, ".auto.tfvars") {
 			continue
 		}
-
-		if f.Name() != "terraform.tfvars" && !strings.HasSuffix(f.Name(), ".auto.tfvars") {
-			continue
-		}
-
-		fp := filepath.Join(path, f.Name())
-		hclf, diag := r.Parser.ParseHCLFile(fp)
-		diags.Extend(diag)
 
 		vv := make(map[string]cty.Value)
-		moreDiags := gohcl.DecodeBody(hclf.Body, r.evalContext, &vv)
+		moreDiags := gohcl.DecodeBody(v.Body, r.evalContext, &vv)
 		diags = append(diags, moreDiags...)
 
-		for k, v := range vv {
-			r.evalContext.Variables[k] = v
+		for ik, iv := range vv {
+			r.evalContext.Variables[ik] = iv
 		}
 	}
 
 	// parse, now that we know the evalContext
-	for _, f := range files {
-		if f.IsDir() {
+	for k, v := range r.Parser.Files() {
+		if !strings.HasSuffix(k, ".tf") {
 			continue
 		}
-
-		if !strings.HasSuffix(f.Name(), ".tf") {
-			continue
-		}
-
-		fp := filepath.Join(path, f.Name())
-		hclf, diag := r.Parser.ParseHCLFile(fp)
-		diags.Extend(diag)
 
 		kb := Blocks{}
-		moreDiags := gohcl.DecodeBody(hclf.Body, r.evalContext, &kb)
+		moreDiags := gohcl.DecodeBody(v.Body, r.evalContext, &kb)
 		diags = append(diags, moreDiags...)
-
-		if !slices.Contains(maps.Keys(r.Providers), fp) {
-			r.Providers[fp] = []Provider{}
-		}
-		r.Providers[fp] = append(r.Providers[fp], kb.Providers...)
 
 		for i, mod := range kb.Modules {
 			// parse raw module providers
-			mod.Providers = make(map[string]string)
+			mod.Providers = make(map[string]Provider)
 			for _, t := range mod.ProvidersRaw.Variables() {
 				spl := t.SimpleSplit()
 				k := spl.RootName()
 				v := spl.Rel[0].(hcl.TraverseAttr).Name
-				mod.Providers[k] = v
-			}
 
-			// determine ParentCluster
-			// based on provider alias for service modules
-			if pn, ok := mod.Providers["kustomization"]; ok {
-				for _, providers := range r.Providers {
-					for _, p := range providers {
-						for _, t := range p.KubeconfigRaw.Variables() {
-							spl := t.SimpleSplit()
-							n := spl.Rel[0].(hcl.TraverseAttr).Name
-							if spl.RootName() == "module" && n == pn {
-								mod.ParentCluster = n
-								break
-							}
+				for _, pf := range r.Providers {
+					for _, p := range pf {
+						if p.Name == k && p.Alias == v {
+							mod.Providers[p.Name] = p
 						}
 					}
-				}
-			}
-
-			// determine ParentCluster
-			// based on cluster_name or cluster_metadata for node-pool modules
-			for _, t := range mod.ClusterNameRaw.Variables() {
-				spl := t.SimpleSplit()
-				if spl.RootName() == "module" {
-					mod.ParentCluster = spl.Rel[0].(hcl.TraverseAttr).Name
-				}
-			}
-
-			for _, t := range mod.ClusterMetadataRaw.Variables() {
-				spl := t.SimpleSplit()
-				if spl.RootName() == "module" {
-					mod.ParentCluster = spl.Rel[0].(hcl.TraverseAttr).Name
 				}
 			}
 
@@ -196,10 +174,10 @@ func (r *Root) Read(path string) (err error) {
 			kb.Modules[i] = mod
 		}
 
-		if !slices.Contains(maps.Keys(r.Modules), fp) {
-			r.Modules[fp] = []Module{}
+		if !slices.Contains(maps.Keys(r.Modules), k) {
+			r.Modules[k] = []Module{}
 		}
-		r.Modules[fp] = append(r.Modules[fp], kb.Modules...)
+		r.Modules[k] = append(r.Modules[k], kb.Modules...)
 	}
 
 	if diags.HasErrors() {
@@ -209,11 +187,20 @@ func (r *Root) Read(path string) (err error) {
 		return diags.Errs()[0]
 	}
 
-	dfPath := filepath.Join(path, "Dockerfile")
-	dfData, err := os.ReadFile(dfPath)
-	if err == nil {
-		r.Dockerfiles[dfPath] = dfData
+	return nil
+}
+
+func (r *Root) WriteFiles(data map[string][]byte) error {
+	for k, v := range data {
+		fp := filepath.Join(r.Path, k)
+		r.toWrite[fp] = v
 	}
+
+	return nil
+}
+
+func (r *Root) DeleteFiles(paths []string) error {
+	r.toDelete = append(r.toDelete, paths...)
 
 	return nil
 }
@@ -223,13 +210,44 @@ func (r *Root) GetVariableValue(name string) (value cty.Value, ok bool) {
 	return v, ok
 }
 
+func (r *Root) SetVariableValue(name string, value cty.Value) {
+	r.evalContext.Variables[name] = value
+}
+
 func (r *Root) Write() (err error) {
-	for n, f := range r.Parser.Files() {
-		err := os.WriteFile(n, f.Bytes, os.FileMode(0644))
+	for n, f := range r.toWrite {
+
+		var ef []byte
+		exists := false
+		mode := os.FileMode(0644)
+		if fi, err := os.Stat(n); err == nil {
+			exists = true
+			mode = fi.Mode()
+			ef, err = os.ReadFile(n)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !exists || !bytes.Equal(ef, f) {
+			if slices.Contains(r.toDelete, n) {
+				// no point writing a file
+				// if we delete it later anyway
+				continue
+			}
+			err = os.WriteFile(n, f, mode)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, n := range r.toDelete {
+		err := os.Remove(n)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
+	return r.Read()
 }

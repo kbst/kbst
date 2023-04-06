@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/kbst/kbst/pkg/tfhcl"
@@ -49,10 +49,8 @@ func TestFilesMulti4Envs(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	f, err := s.Files()
-	assert.Equal(t, nil, err, nil)
-
-	assert.Equal(t, 21, len(f), nil)
+	f := s.root.Parser.Files()
+	assert.Equal(t, 25, len(f), nil)
 
 	os.RemoveAll(p)
 }
@@ -76,10 +74,10 @@ func TestWriteChanges(t *testing.T) {
 		"cluster_min_master_version": cty.StringVal("1.22"),
 	}
 
-	err = s.AddCluster(namePrefix, "google", region, "", GenerateConfigurations(s.Environments, baseCfg))
+	c, err := s.AddCluster(namePrefix, "google", region, "", GenerateConfigurations(s.Environments, baseCfg))
 	assert.Equal(t, err, nil, nil)
 
-	clusterName := s.Clusters[len(s.Clusters)-1].Name()
+	clusterName := c.Name()
 	poolName := "rm"
 
 	npBaseCfg := map[string]cty.Value{
@@ -90,13 +88,11 @@ func TestWriteChanges(t *testing.T) {
 		"machine_type":       cty.StringVal("e2-standard-8"),
 	}
 
-	err = s.AddNodePool(clusterName, poolName, GenerateConfigurations(s.Environments, npBaseCfg))
+	_, err = s.AddNodePool(clusterName, poolName, GenerateConfigurations(s.Environments, npBaseCfg))
 	assert.Equal(t, err, nil, nil)
 
-	err = s.AddService(clusterName, "prometheus", "")
+	_, err = s.AddService(clusterName, "prometheus", "")
 	assert.Equal(t, err, nil, nil)
-
-	s.WriteChanges()
 
 	diffs, err := getGitDiffs(p)
 	if err != nil {
@@ -114,7 +110,7 @@ func TestWriteChanges(t *testing.T) {
 	}, diffs, nil)
 
 	// refresh Stack in memory
-	s.FromPath(p)
+	s.FromPath()
 
 	// removing the cluster also removes
 	// it's node pools and services
@@ -123,8 +119,6 @@ func TestWriteChanges(t *testing.T) {
 		log.Println(err)
 	}
 
-	s.WriteChanges()
-
 	hasDiff, err := hasGitDiff(p)
 	if err != nil {
 		log.Println(err)
@@ -132,17 +126,21 @@ func TestWriteChanges(t *testing.T) {
 
 	// after removing the cluster again
 	// there must not be any changes
-	assert.Equal(t, false, hasDiff, nil)
+	diffs, err = getGitDiffs(p)
+	if err != nil {
+		log.Println(err)
+	}
+	assert.Equal(t, false, hasDiff, diffs)
 
-	os.RemoveAll(p)
+	//os.RemoveAll(p)
 }
 
 func TestAddClusterRejectDuplicate(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	for _, ex := range s.Clusters {
-		err = s.AddCluster(ex.NamePrefix, ex.Provider, ex.Region, ex.Version, ex.Configurations)
+	for _, ex := range s.Clusters() {
+		_, err = s.AddCluster(ex.NamePrefix, ex.Provider, ex.Region, ex.Version, ex.Configurations)
 		assert.EqualError(t, err, fmt.Sprintf("error: cluster %q already exists", ex.Name()), nil)
 	}
 
@@ -153,9 +151,9 @@ func TestAddClusterDiffNamePrefix(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	for _, ex := range s.Clusters {
+	for _, ex := range s.Clusters() {
 		// different namePrefix, everything else identical
-		err = s.AddCluster("gc1", ex.Provider, ex.Region, ex.Version, ex.Configurations)
+		_, err = s.AddCluster("gc1", ex.Provider, ex.Region, ex.Version, ex.Configurations)
 		assert.Equal(t, err, nil, nil)
 
 	}
@@ -173,9 +171,9 @@ func TestAddClusterDiffRegion(t *testing.T) {
 		"google":  "northamerica-northeast1",
 	}
 
-	for _, ex := range s.Clusters {
+	for _, ex := range s.Clusters() {
 		// different region, everything else identical
-		err = s.AddCluster(ex.NamePrefix, ex.Provider, region[ex.Provider], ex.Version, ex.Configurations)
+		_, err = s.AddCluster(ex.NamePrefix, ex.Provider, region[ex.Provider], ex.Version, ex.Configurations)
 		assert.Equal(t, err, nil, nil)
 	}
 
@@ -186,8 +184,8 @@ func TestAddNodePool(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	for _, ex := range s.NodePools {
-		err = s.AddNodePool(ex.ClusterName, "test", ex.Configurations)
+	for _, ex := range s.NodePools() {
+		_, err = s.AddNodePool(ex.ClusterName, "test", ex.Configurations)
 		assert.Equal(t, err, nil, nil)
 	}
 
@@ -198,7 +196,7 @@ func TestAddNodePoolRejectNoCluster(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	err = s.AddNodePool("no_such_cluster", "test", s.NodePools[0].Configurations)
+	_, err = s.AddNodePool("no_such_cluster", "test", s.NodePools()[0].Configurations)
 	assert.EqualError(t, err, "no cluster named \"no_such_cluster\" found", nil)
 
 	os.RemoveAll(p)
@@ -208,8 +206,8 @@ func TestAddNodePoolRejectDuplicate(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	for _, ex := range s.NodePools {
-		err = s.AddNodePool(ex.ClusterName, ex.PoolName, ex.Configurations)
+	for _, ex := range s.NodePools() {
+		_, err = s.AddNodePool(ex.ClusterName, ex.PoolName, ex.Configurations)
 		assert.EqualError(t, err, fmt.Sprintf("error: node pool %q already exists", ex.Name()), nil)
 	}
 
@@ -220,8 +218,8 @@ func TestAddService(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	for _, ex := range s.Clusters {
-		err = s.AddService(ex.Name(), "sealed-secrets", "")
+	for _, ex := range s.Clusters() {
+		_, err = s.AddService(ex.Name(), "sealed-secrets", "")
 		assert.Equal(t, err, nil, nil)
 	}
 
@@ -232,7 +230,7 @@ func TestAddServiceRejectNoCluster(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	err = s.AddService("no_such_cluster", "", "")
+	_, err = s.AddService("no_such_cluster", "", "")
 	assert.EqualError(t, err, "no cluster named \"no_such_cluster\" found", nil)
 
 	os.RemoveAll(p)
@@ -242,8 +240,8 @@ func TestAddServiceRejectDuplicate(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	for _, ex := range s.Services {
-		err = s.AddService(ex.ClusterName, ex.EntryName, "")
+	for _, ex := range s.Services() {
+		_, err = s.AddService(ex.ClusterName, ex.EntryName, "")
 		assert.EqualError(t, err, fmt.Sprintf("error: service %q already exists", ex.Name()), nil)
 	}
 
@@ -254,16 +252,20 @@ func TestRemoveCluster(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	expLenC := len(s.Clusters) - 1
-	expLenNP := len(s.NodePools) - 1
-	expLenSVC := len(s.Services) - 3
+	clusters := s.Clusters()
+	nodePools := s.NodePools()
+	services := s.Services()
 
-	err = s.Remove(s.Clusters[0].Name())
+	expLenC := len(clusters) - 1
+	expLenNP := len(nodePools) - 1
+	expLenSVC := len(services) - 3
+
+	err = s.Remove(clusters[0].Name())
 	assert.Equal(t, nil, err, nil)
 
-	assert.Equal(t, expLenC, len(s.Clusters), nil)
-	assert.Equal(t, expLenNP, len(s.NodePools), nil)
-	assert.Equal(t, expLenSVC, len(s.Services), nil)
+	assert.Equal(t, expLenC, len(s.Clusters()), nil)
+	assert.Equal(t, expLenNP, len(s.NodePools()), nil)
+	assert.Equal(t, expLenSVC, len(s.Services()), nil)
 
 	os.RemoveAll(p)
 }
@@ -272,9 +274,11 @@ func TestRemoveClusterRejectLast(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-eks-3envs")
 	assert.Equal(t, nil, err, nil)
 
-	assert.Len(t, s.Clusters, 1, nil)
+	clusters := s.Clusters()
 
-	err = s.Remove(s.Clusters[0].Name())
+	assert.Len(t, clusters, 1, nil)
+
+	err = s.Remove(clusters[0].Name())
 	assert.EqualError(t, err, "stacks require one cluster, not removing \"eks_gc0_eu-west-1\"", nil)
 
 	os.RemoveAll(p)
@@ -284,12 +288,14 @@ func TestRemoveNodePool(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	expLenNP := len(s.NodePools) - 1
+	nodePools := s.NodePools()
 
-	err = s.Remove(s.NodePools[0].Name())
+	expLenNP := len(nodePools) - 1
+
+	err = s.Remove(nodePools[0].Name())
 	assert.Equal(t, nil, err, nil)
 
-	assert.Equal(t, expLenNP, len(s.NodePools), nil)
+	assert.Equal(t, expLenNP, len(s.NodePools()), nil)
 
 	os.RemoveAll(p)
 }
@@ -298,12 +304,14 @@ func TestRemoveService(t *testing.T) {
 	s, p, err := newTestRepoFromFixture("kubestack-starter-multi-4envs")
 	assert.Equal(t, nil, err, nil)
 
-	expLenSVC := len(s.Services) - 1
+	services := s.Services()
 
-	err = s.Remove(s.Services[0].Name())
+	expLenSVC := len(services) - 1
+
+	err = s.Remove(services[0].Name())
 	assert.Equal(t, nil, err, nil)
 
-	assert.Equal(t, expLenSVC, len(s.Services), nil)
+	assert.Equal(t, expLenSVC, len(s.Services()), nil)
 
 	os.RemoveAll(p)
 }
@@ -329,23 +337,14 @@ func hasGitDiff(p string) (bool, error) {
 		return false, err
 	}
 
-	fmt.Printf("diffs: %v\n", diffs)
-
 	return len(diffs) > 0, nil
 }
 
 func newTestRepoFromFixture(n string) (*Stack, string, error) {
-	r := tfhcl.NewRoot()
-	cj := util.CliJSON{}
-	err := cj.Load(util.CachedDownloader{})
-	if err != nil {
-		return &Stack{}, "", err
-	}
-	s := NewStack(r, cj)
+	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
 
 	// copy fixture into temp test directory
-	p, _ := ioutil.TempDir(os.TempDir(), "kbst-unit-test-*")
-	out, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("cp -r %s/* %s/", path.Join(fixturesPath, n), p)).CombinedOutput()
+	out, err := exec.Command("/bin/bash", "-c", fmt.Sprintf("cp -r %s/* %s/", filepath.Join(fixturesPath, n), p)).CombinedOutput()
 	if err != nil {
 		return &Stack{}, p, fmt.Errorf("%s: %s", err, out)
 	}
@@ -356,7 +355,15 @@ func newTestRepoFromFixture(n string) (*Stack, string, error) {
 		return &Stack{}, p, fmt.Errorf("%s: %s", err, out)
 	}
 
-	err = s.FromPath(p)
+	r := tfhcl.NewRoot(p)
+	cj := util.CliJSON{}
+	err = cj.Load(util.CachedDownloader{})
+	if err != nil {
+		return &Stack{}, "", err
+	}
+	s := NewStack(r, cj)
+
+	err = s.FromPath()
 
 	return s, p, err
 }

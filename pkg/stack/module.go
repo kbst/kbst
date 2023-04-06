@@ -5,9 +5,9 @@ import (
 )
 
 type Module struct {
-	tfMod *tfhcl.Module
+	mod *tfhcl.Module
 }
 
 func (c *Module) Name() string {
-	return c.tfMod.Name
+	return c.mod.Name
 }

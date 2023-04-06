@@ -97,6 +97,6 @@ func TestClusterToHCL(t *testing.T) {
 	assert.ElementsMatch(t, maps.Keys(files), []string{"gke_kbstgke_test-region1_cluster.tf", "gke_kbstgke_test-region1_providers.tf"})
 
 	for _, d := range files {
-		assert.NotEqual(t, 0, len(d.Bytes()))
+		assert.NotEqual(t, 0, len(d))
 	}
 }

@@ -41,35 +41,40 @@ var listCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		r := tfhcl.NewRoot()
+		r := tfhcl.NewRoot(path)
 		s := stack.NewStack(r, cj)
-		err = s.FromPath(path)
+		err = s.FromPath()
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		clusters := s.Clusters()
+		nodePools := s.NodePools()
+		services := s.Services()
+		modules := s.Modules()
 
 		w := tabwriter.NewWriter(os.Stdout, 4, 8, 2, '\t', 0)
 		line := "%s\t%s\t%s\n"
 
 		filterCustomModules := []string{}
-		for _, c := range s.Clusters {
+		for _, c := range clusters {
 			fmt.Fprintf(w, line, "TYPE", "NAME", "VERSION")
 			fmt.Fprintf(w, line, "cluster", c.Name(), c.Version)
 
-			for _, np := range s.NodePools {
+			for _, np := range nodePools {
 				if np.ClusterName == c.Name() {
 					fmt.Fprintf(w, line, "node-pool", np.Name(), np.Version)
 				}
 			}
 
-			for _, svc := range s.Services {
+			for _, svc := range services {
 				if svc.ClusterName == c.Name() {
 					fmt.Fprintf(w, line, "service", svc.Name(), svc.Version)
 				}
 			}
 
 			if showAll {
-				for _, m := range s.Modules {
+				for _, m := range modules {
 					if strings.HasPrefix(m.Name(), fmt.Sprintf("%s_", c.Name())) {
 						// if custom modules are prefixed
 						// with the name of a cluster show them here
@@ -84,9 +89,9 @@ var listCmd = &cobra.Command{
 
 		// show custom modules that were not
 		// prefixed with a cluster name
-		if showAll && len(s.Modules) > 0 {
+		if showAll && len(modules) > 0 {
 			fmt.Fprintf(w, line, "TYPE", "NAME", "VERSION")
-			for _, m := range s.Modules {
+			for _, m := range modules {
 				if !slices.Contains(filterCustomModules, m.Name()) {
 					fmt.Fprintf(w, line, "custom", m.Name(), "")
 				}
