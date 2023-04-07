@@ -31,6 +31,21 @@ func TestStackFromPathEKS3Envs(t *testing.T) {
 	os.RemoveAll(p)
 }
 
+func TestStackFromPathEKSELBDNS(t *testing.T) {
+	s, p, err := newTestRepoFromFixture("kubestack-starter-eks-3envs")
+	assert.Equal(t, nil, err, nil)
+
+	assert.Len(t, s.Clusters(), 1, "incorrect number of clusters")
+	assert.Len(t, s.NodePools(), 0, "incorrect number of node pools")
+	assert.Len(t, s.Modules(), 0, "incorrect number of custom modules")
+
+	services := s.Services()
+	assert.Len(t, services, 1, "incorrect number of services")
+	assert.Equal(t, "eks_gc0_eu-west-1_nginx", services[0].Name())
+
+	os.RemoveAll(p)
+}
+
 func TestStackFromPathGKE4Envs(t *testing.T) {
 	_, p, err := newTestRepoFromFixture("kubestack-starter-gke-4envs")
 	assert.Equal(t, nil, err, nil)
@@ -69,7 +84,7 @@ func TestWriteChanges(t *testing.T) {
 		"cluster_min_node_count":     cty.NumberIntVal(1),
 		"cluster_initial_node_count": cty.NumberIntVal(1),
 		"cluster_max_node_count":     cty.NumberIntVal(3),
-		"cluster_node_locations":     cty.StringVal(""),
+		"cluster_node_locations":     cty.StringVal("europe-west4-a,europe-west4-b,europe-west4-c"),
 		"cluster_machine_type":       cty.StringVal("e2-standard-8"),
 		"cluster_min_master_version": cty.StringVal("1.22"),
 	}
@@ -167,13 +182,23 @@ func TestAddClusterDiffRegion(t *testing.T) {
 
 	region := map[string]string{
 		"aws":     "us-east-1",
-		"azurerm": "central-us",
+		"azurerm": "centralus",
 		"google":  "northamerica-northeast1",
 	}
 
 	for _, ex := range s.Clusters() {
 		// different region, everything else identical
-		_, err = s.AddCluster(ex.NamePrefix, ex.Provider, region[ex.Provider], ex.Version, ex.Configurations)
+		cfg := ex.Configurations
+		if ex.Provider == "aws" {
+			cfg[0].Attributes["cluster_availability_zones"] = cty.StringVal("us-east-1a,us-east-1b,us-east-1c")
+		}
+		if ex.Provider == "azurerm" {
+			cfg[0].Attributes["availability_zones"] = cty.StringVal("1,2,3")
+		}
+		if ex.Provider == "google" {
+			cfg[0].Attributes["cluster_node_locations"] = cty.StringVal("northamerica-northeast1-a,northamerica-northeast1-b,northamerica-northeast1-c")
+		}
+		_, err = s.AddCluster(ex.NamePrefix, ex.Provider, region[ex.Provider], ex.Version, cfg)
 		assert.Equal(t, err, nil, nil)
 	}
 
