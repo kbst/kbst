@@ -104,7 +104,8 @@ func (s *Stack) SetBaseDomain(bd cty.Value) {
 
 func (s *Stack) Clusters() (clusters []Cluster) {
 	for _, mods := range s.root.Modules {
-		for _, m := range mods {
+		for i := range mods {
+			m := mods[i]
 			kind, provider, version, err := m.TypeProviderVersion()
 			if err != nil {
 				continue
@@ -172,8 +173,9 @@ func (s *Stack) Clusters() (clusters []Cluster) {
 }
 
 func (s *Stack) NodePools() (nodePools []NodePool) {
-	for _, mf := range s.root.Modules {
-		for _, m := range mf {
+	for _, mods := range s.root.Modules {
+		for i := range mods {
+			m := mods[i]
 			kind, provider, version, err := m.TypeProviderVersion()
 			if err != nil {
 				continue
@@ -230,8 +232,9 @@ func (s *Stack) NodePools() (nodePools []NodePool) {
 }
 
 func (s *Stack) Services() (services []Service) {
-	for _, mf := range s.root.Modules {
-		for _, m := range mf {
+	for _, mods := range s.root.Modules {
+		for i := range mods {
+			m := mods[i]
 			kind, _, _, err := m.TypeProviderVersion()
 			if err != nil {
 				continue
@@ -283,8 +286,9 @@ func (s *Stack) Services() (services []Service) {
 }
 
 func (s *Stack) Modules() (modules []Module) {
-	for _, mf := range s.root.Modules {
-		for _, m := range mf {
+	for _, mods := range s.root.Modules {
+		for i := range mods {
+			m := mods[i]
 			_, _, _, err := m.TypeProviderVersion()
 			if err == nil {
 				continue

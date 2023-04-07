@@ -31,6 +31,21 @@ func TestStackFromPathEKS3Envs(t *testing.T) {
 	os.RemoveAll(p)
 }
 
+func TestStackFromPathEKSELBDNS(t *testing.T) {
+	s, p, err := newTestRepoFromFixture("kubestack-starter-eks-3envs")
+	assert.Equal(t, nil, err, nil)
+
+	assert.Len(t, s.Clusters(), 1, "incorrect number of clusters")
+	assert.Len(t, s.NodePools(), 0, "incorrect number of node pools")
+	assert.Len(t, s.Modules(), 0, "incorrect number of custom modules")
+
+	services := s.Services()
+	assert.Len(t, services, 1, "incorrect number of services")
+	assert.Equal(t, "eks_gc0_eu-west-1_nginx", services[0].Name())
+
+	os.RemoveAll(p)
+}
+
 func TestStackFromPathGKE4Envs(t *testing.T) {
 	_, p, err := newTestRepoFromFixture("kubestack-starter-gke-4envs")
 	assert.Equal(t, nil, err, nil)
