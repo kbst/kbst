@@ -127,7 +127,7 @@ func initStarter(starter string, args []string) {
 			"cluster_max_node_count":     cty.NumberIntVal(clusterGKEMaxNodes),
 			"cluster_node_locations":     cty.StringVal(strings.Join(zones, ",")),
 			"cluster_machine_type":       cty.StringVal(clusterGKEInstanceType),
-			"cluster_min_master_version": cty.StringVal("1.20"),
+			"cluster_min_master_version": cty.StringVal("1.25"),
 		}
 	default:
 		log.Fatalf("unexpected error: starter: '%s' exists as archive, but is not implemented in CLI", starter)

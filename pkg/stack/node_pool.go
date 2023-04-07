@@ -46,7 +46,7 @@ func (np *NodePool) Validate(cj util.CliJSON) error {
 			zones = strings.Split(azs.AsString(), ",")
 		}
 	case "azurerm":
-		vms, found := baseCfg["default_node_pool_vm_size"]
+		vms, found := baseCfg["vm_size"]
 		if found {
 			instanceType = vms.AsString()
 		}

@@ -212,7 +212,7 @@ var clusterAddGKECmd = &cobra.Command{
 			"cluster_max_node_count":     cty.NumberIntVal(clusterGKEMaxNodes),
 			"cluster_node_locations":     cty.StringVal(strings.Join(zones, ",")),
 			"cluster_machine_type":       cty.StringVal(clusterGKEInstanceType),
-			"cluster_min_master_version": cty.StringVal("1.20"),
+			"cluster_min_master_version": cty.StringVal("1.25"),
 		}
 
 		_, err = s.AddCluster(namePrefix, "google", region, "", stack.GenerateConfigurations(s.Environments, baseCfg))

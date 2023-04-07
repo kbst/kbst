@@ -305,7 +305,7 @@ func (s *Stack) Modules() (modules []Module) {
 
 func (s *Stack) dockerfile() (out []byte, err error) {
 	for k, v := range s.root.Parser.Files() {
-		if !strings.HasSuffix(k, "/Dockerfile") {
+		if !strings.HasSuffix(k, "Dockerfile") {
 			continue
 		}
 		out = v.Bytes
@@ -375,7 +375,10 @@ func (s *Stack) AddCluster(namePrefix, provider, region, version string, configu
 		}
 	}
 
-	c.Validate(s.cliJSON)
+	err = c.Validate(s.cliJSON)
+	if err != nil {
+		return c, err
+	}
 
 	err = s.root.WriteFiles(c.ToHCL())
 	if err != nil {
@@ -423,7 +426,10 @@ func (s *Stack) AddNodePool(clusterName, poolName string, configurations []Confi
 		}
 	}
 
-	np.Validate(s.cliJSON)
+	err = np.Validate(s.cliJSON)
+	if err != nil {
+		return np, err
+	}
 
 	err = s.root.WriteFiles(np.ToHCL())
 	if err != nil {
