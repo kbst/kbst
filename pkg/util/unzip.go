@@ -27,6 +27,15 @@ func Unzip(src []byte, path string) (filenames []string, err error) {
 		return filenames, err
 	}
 
+	// refuse to overwrite existing directories
+	first := r.File[0].FileInfo()
+	if first.IsDir() {
+		p := filepath.Join(dest, first.Name())
+		if _, err := os.Stat(p); !os.IsNotExist(err) {
+			return filenames, fmt.Errorf("path %q already exists", p)
+		}
+	}
+
 	for _, f := range r.File {
 
 		// Store filename/path for returning and using later on
