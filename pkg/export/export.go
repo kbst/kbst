@@ -1,6 +1,8 @@
 package export
 
 import (
+	"github.com/kbst/kbst/pkg/stack"
+	"github.com/zclconf/go-cty/cty"
 	ctyJson "github.com/zclconf/go-cty/cty/json"
 )
 
@@ -45,4 +47,34 @@ type Service struct {
 	Provider       string          `json:"provider"`
 	Version        string          `json:"version"`
 	Configurations []Configuration `json:"configurations"`
+}
+
+func (s *Stack) StackEnvironments() []stack.Environment {
+	envs := []stack.Environment{}
+	for _, e := range s.Environments {
+		envs = append(envs, stack.Environment{
+			Key:       e.Key,
+			IsBaseKey: e.IsBaseKey,
+		})
+	}
+
+	return envs
+}
+
+func (s *Stack) StackConfigurations(in []Configuration) []stack.Configuration {
+	cfgs := []stack.Configuration{}
+	for _, cfg := range in {
+		sAttrs := map[string]cty.Value{}
+
+		for k, v := range cfg.Attributes {
+			sAttrs[k] = v.Value
+		}
+
+		cfgs = append(cfgs, stack.Configuration{
+			EnvironmentKey: cfg.EnvironmentKey,
+			Attributes:     sAttrs,
+		})
+	}
+
+	return cfgs
 }

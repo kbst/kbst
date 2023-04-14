@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/kbst/kbst/pkg/export"
 	"github.com/kbst/kbst/pkg/stack"
 	"github.com/kbst/kbst/pkg/tfhcl"
 	"github.com/kbst/kbst/pkg/util"
@@ -89,6 +90,80 @@ func (r Repo) Init(starter string, baseDomain string, namePrefix string, region 
 
 	// initialize git repository
 	err = r.gitCommit(repoPath, fmt.Sprintf("Initialized from %s starter", strings.ToUpper(starter)))
+	if err != nil {
+		return err
+	}
+
+	return
+}
+
+func (r Repo) Import(es export.Stack, path string) (err error) {
+	cj := util.CliJSON{}
+	err = cj.Load(util.CachedDownloader{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	providerToStarter := map[string]string{
+		"aws":     "eks",
+		"azurerm": "aks",
+		"google":  "gke",
+	}
+
+	filenames, err := r.extractArchive(providerToStarter[es.Clusters[0].Provider], es.Clusters[0].Version, "", path)
+	if err != nil {
+		return err
+	}
+
+	// determine unzip target path
+	repoPath, err := filepath.Abs(filenames[0])
+	if err != nil {
+		return err
+	}
+
+	// remove .tf files included in starter archives
+	err = r.cleanStarter(repoPath)
+	if err != nil {
+		return err
+	}
+
+	s := stack.NewStack(tfhcl.NewRoot(repoPath), cj)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s.SetBaseDomain(cty.StringVal(es.BaseDomain))
+
+	s.Environments = es.StackEnvironments()
+
+	for _, c := range es.Clusters {
+		_, err = s.AddCluster(c.NamePrefix, c.Provider, c.Region, c.Version, es.StackConfigurations(c.Configurations))
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, np := range es.NodePools {
+		_, err = s.AddNodePool(np.ClusterName, np.PoolName, es.StackConfigurations(np.Configurations))
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, svc := range es.Services {
+		_, err = s.AddService(svc.ClusterName, svc.EntryName, svc.Version)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.InitFiles(es.BaseDomain)
+	if err != nil {
+		return err
+	}
+
+	// initialize git repository
+	err = r.gitCommit(repoPath, fmt.Sprintf("Initialized from %s import", es.BaseDomain))
 	if err != nil {
 		return err
 	}
