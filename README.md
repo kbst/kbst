@@ -31,6 +31,9 @@
 
 </div>
 
+> [!WARNING]
+> **The Kubestack CLI is deprecated** in favour of an AI native [SKILL.md](https://www.kubestack.com/SKILL.md) approach.
+
 ## Introduction
 
 `kbst` is an all-in-one CLI to scaffold your Infrastructure as Code repository and deploy your entire platform stack locally for faster iteration.
